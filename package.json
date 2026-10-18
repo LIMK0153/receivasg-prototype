@@ -1,0 +1,46 @@
+{
+  "name": "receivasg-prototype",
+  "version": "1.0.0",
+  "description": "ReceivaSG: tokenised invoice financing for Singapore SMEs. BF3214 Digital Assets group project prototype.",
+  "scripts": {
+    "compile": "hardhat compile && node scripts/export-artifacts.js",
+    "test": "hardhat test",
+    "build": "npm run compile && node frontend/build.mjs",
+    "node": "hardhat node",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
+    "e2e": "node e2e/sandbox.cjs && node e2e/manual.cjs",
+    "e2e:wallet": "node e2e/wallet.cjs",
+    "serve": "node -e \"require('http').createServer((q,r)=>{r.writeHead(200,{'content-type':'text/html'});r.end(require('fs').readFileSync('dist/receivasg-prototype.html'))}).listen(5173,()=>console.log('Prototype at http://localhost:5173'))\""
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@ethereumjs/block": "4.3.0",
+    "@ethereumjs/common": "3.2.0",
+    "@ethereumjs/tx": "4.2.0",
+    "@ethereumjs/util": "8.1.0",
+    "@ethereumjs/vm": "6.5.0",
+    "@nomicfoundation/hardhat-chai-matchers": "2.1.2",
+    "@nomicfoundation/hardhat-ethers": "3.1.3",
+    "@nomicfoundation/hardhat-network-helpers": "1.1.2",
+    "@nomicfoundation/hardhat-verify": "2.1.3",
+    "@openzeppelin/contracts": "5.0.2",
+    "buffer": "6.0.3",
+    "chai": "4.5.0",
+    "dotenv": "18.0.8",
+    "esbuild": "0.24.0",
+    "ethers": "6.17.0",
+    "events": "3.3.0",
+    "hardhat": "2.22.17",
+    "process": "0.11.10",
+    "solc": "0.8.24",
+    "util": "0.12.5"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "private": true
+}
