@@ -2,6 +2,8 @@
 
 A working prototype of **ReceivaSG**, the tokenised invoice financing platform described in our submitted press release (BF3214 Digital Assets, group project). A Singapore SME sells a buyer-approved InvoiceNow invoice to a bankruptcy-remote SPV. The SPV issues permissioned ERC-3643-style notes to accredited and institutional investors, who fund it in fractions. The SME is paid in one atomic settlement, and when the buyer pays at maturity a smart contract distributes the proceeds pro rata to whoever holds the notes.
 
+**Live demo:** https://limk0153.github.io/receivasg-prototype/
+
 **Quick start:** open `dist/receivasg-prototype.html` in Chrome or Edge. No install, no wallet, no internet needed (internet only loads the fonts). Sign in as one of the demo accounts and use it like a website. Switch accounts from the top-right menu. The yellow presenter checklist tells you what to click next and highlights that button; it never clicks anything for you.
 
 ---
