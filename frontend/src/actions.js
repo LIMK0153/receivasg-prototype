@@ -30,6 +30,12 @@ export function makeActions(client) {
     acceptOffer: (actor, id, ref) =>
       client.send(actor, `${ACTORS[actor].short}: accept offer, sell ${ref} to the SPV`, (s) => spvAt(s).acceptOffer(id)),
 
+    counterOffer: (actor, id, ref, cents) =>
+      client.send(actor, `${ACTORS[actor].short}: counter-offer ${fmt(cents)} for ${ref}`, (s) => spvAt(s).counterOffer(id, BigInt(cents))),
+
+    reviewCounter: (id, ref, approve) =>
+      client.send("admin", `ReceivaSG: ${approve ? "approve" : "reject"} counter-offer on ${ref}`, (s) => spvAt(s).reviewCounter(id, approve)),
+
     declineOffer: (actor, id, ref) =>
       client.send(actor, `${ACTORS[actor].short}: decline offer for ${ref}`, (s) => spvAt(s).declineOffer(id)),
 

@@ -13,7 +13,7 @@ const html = fs.readFileSync(path.join(__dirname, "..", "dist", "receivasg-proto
 const server = http.createServer((q, r) => { r.writeHead(200, { "content-type": "text/html", "content-security-policy": CSP }); r.end(html); }).listen(0);
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
   page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
@@ -44,33 +44,46 @@ const server = http.createServer((q, r) => { r.writeHead(200, { "content-type": 
   await shot("01-sme");
   await page.click("#btn-submit-INV-2026-0412"); await toast("Meridian requests financing");
 
-  await switchTo("ReceivaSG Ops"); await cueIs("#btn-verify"); await shot("02-ops");
+  await switchTo("ReceivaSG Ops"); await cueIs("#btn-verify");
+  // groupmate check: CCC should price the S$100,000 / 90-day invoice at S$85,000
+  await page.locator(".grade-pick .grade", { hasText: "CCC" }).click();
+  console.log("   CCC quote:", (await page.locator(".quote").first().innerText()).replace(/\s+/g, " "));
+  await page.locator(".grade-pick .grade", { hasText: /^A$/ }).click();
+  await shot("02-ops");
   await page.click("#btn-verify"); await toast("Ops verifies and grades A");
 
-  await switchTo("Meridian"); await shot("03-offer");
+  await switchTo("Meridian"); await cueIs("#btn-counter");
+  if (process.env.SKIP_COUNTER) {
+    await page.getByRole("button", { name: "Skip this step" }).click();
+    console.log("   skipped the optional counter-offer");
+  } else {
+    await page.click("#btn-counter"); await shot("03-counter-form");
+    await page.fill("#counter-4", "98200"); await page.click("#btn-send-counter"); await toast("Meridian counter-offers S$98,200");
+    await switchTo("ReceivaSG Ops"); await cueIs("#btn-approve-counter"); await shot("03b-ops-review");
+    await page.click("#btn-approve-counter"); await toast("Ops approves the counter-offer");
+    await switchTo("Meridian"); await shot("03c-offer");
+  }
   await page.click("#btn-accept"); await toast("Meridian accepts the offer");
 
   const card = () => page.locator(".offer-card", { hasText: "INV-2026-0412" });
   await switchTo("Lion Gate"); await cueIs("#amt-4");
   await card().locator("input").fill("50000"); await card().locator("button.btn").click(); await toast("Lion Gate commits 50,000");
-  await switchTo("Harbourfront");
-  await card().locator("input").fill("30000"); await card().locator("button.btn").click(); await toast("Harbourfront commits 30,000");
-  await switchTo("Jasmine"); await cueIs("#fill-4"); await shot("04-market");
-  await card().locator("button.chip", { hasText: "Fill remaining" }).click(); await card().locator("button.btn").click(); await toast("Jasmine fills the invoice");
+  await switchTo("Lim & Pang"); await cueIs("#fill-4"); await shot("04-market");
+  await card().locator("button.chip", { hasText: "Fill remaining" }).click(); await card().locator("button.btn").click(); await toast("Lim & Pang fills the invoice");
   await shot("05-settled");
 
   await cueIs("#btn-demo-tools"); await tools("+30 days"); await toast("+30 days");
-  await nav("DDEx market"); await cueIs("#btn-list"); await page.click("#btn-list"); await toast("Jasmine lists on DDEx");
+  await switchTo("Lion Gate"); await nav("DDEx market"); await cueIs("#btn-list"); await page.click("#btn-list"); await toast("Lion Gate lists on DDEx");
   await switchTo("Unverified"); await nav("DDEx market"); await shot("06-ddex");
   await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("Unverified tries to buy");
-  await switchTo("Harbourfront"); await nav("DDEx market");
-  await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("Harbourfront buys");
+  await switchTo("Lim & Pang"); await nav("DDEx market");
+  await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("Lim & Pang buys");
   await tools("due date"); await toast("Fast-forward to due date");
   await switchTo("Straits Marine"); await cueIs("#btn-repay-4"); await shot("07-buyer");
   await page.click("#btn-repay-4"); await toast("Straits Marine pays");
   await page.click("#nav-results"); await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(OUT, "08-results.png"), fullPage: true });
-  console.log((await page.locator(".main").innerText()).split("\n").filter((l) => /Held to maturity|Sold on DDEx|bought on DDEx/.test(l)).join("\n"));
+  console.log((await page.locator(".main").innerText()).split("\n").filter((l) => /Held to maturity|Sold on DDEx|bought on DDEx|Received from|block #/.test(l)).join("\n"));
   console.log("checklist:", (await page.locator(".guide-text strong").innerText().catch(() => "hidden")));
 
   // duplicate e-invoice

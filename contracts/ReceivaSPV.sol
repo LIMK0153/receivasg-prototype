@@ -70,7 +70,7 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
     uint64 public constant MAX_TENOR = 365 days;
 
     /// discount charged per 90 days of tenor, in basis points of face value, by grade
-    uint16[7] public discountBpsPer90d = [uint16(125), 160, 200, 275, 375, 500, 700];
+    uint16[7] public discountBpsPer90d = [uint16(125), 160, 200, 275, 375, 500, 1500];
     /// minimum ticket per investor, in S$ cents, by grade (AAA has the highest entry barrier)
     uint256[7] public minTicket = [uint256(25_000_00), 10_000_00, 5_000_00, 2_500_00, 1_000_00, 1_000_00, 1_000_00];
     uint16 public servicingFeeBps = 10; // 0.10% of face, taken at maturity
@@ -90,6 +90,8 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
     /// @notice Cash an investor has committed across all invoices not yet settled.
     ///         Their tSGD allowance to the SPV must cover this total.
     mapping(address => uint256) public outstandingCommitted;
+    /// @notice A price the SME has proposed instead of the grade-based offer, awaiting ReceivaSG's review.
+    mapping(uint256 => uint256) public counterPrice;
 
     // ── events ────────────────────────────────────────────────────────
     event InvoiceSubmitted(uint256 indexed id, address indexed supplier, address indexed buyer, bytes32 docHash, uint256 faceValue, uint64 dueDate);
@@ -105,6 +107,8 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
     event Distribution(uint256 indexed id, address indexed holder, uint256 amount, uint256 notes);
     event InvoiceDefaulted(uint256 indexed id, uint256 recovered);
     event GradeParamsUpdated(uint8 grade, uint16 discountBpsPer90d, uint256 minTicket);
+    event CounterOffered(uint256 indexed id, uint256 offeredPrice, uint256 counterPrice);
+    event CounterReviewed(uint256 indexed id, bool approved, uint256 price);
 
     // ── errors ────────────────────────────────────────────────────────
     error NotRegisteredSME();
@@ -122,6 +126,9 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
     error TooManyCommitments();
     error NotYetInDefault(uint64 defaultableAfter);
     error InvalidGrade();
+    error CounterOutOfRange(uint256 minimum, uint256 maximum);
+    error CounterPending();
+    error NoCounterPending();
 
     constructor(
         address admin,
@@ -223,6 +230,7 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
         Invoice storage inv = _invoices[id];
         if (msg.sender != inv.supplier) revert NotSupplier();
         if (inv.status != Status.Offered) revert WrongStatus(inv.status);
+        if (counterPrice[id] != 0) revert CounterPending();
 
         address note = Clones.clone(noteImplementation);
         ReceivableNote(note).initialize(
@@ -258,8 +266,49 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
         if (inv.status != Status.Offered) revert WrongStatus(inv.status);
         inv.status = Status.Cancelled;
         inv.closedAt = uint64(block.timestamp);
+        delete counterPrice[id];
         delete invoiceIdByDocHash[inv.docHash]; // SME kept the invoice; it may be resubmitted later
         emit OfferDeclined(id);
+    }
+
+    // ── counter-offer ─────────────────────────────────────────────────
+    /// @notice Range an SME may counter within: above the current offer, and no higher
+    ///         than the price one grade better would earn for the same tenor (capped at face).
+    ///         This keeps investors paid for the buyer's risk. AAA has no room to counter.
+    function counterOfferRange(uint256 id) public view returns (uint256 minimum, uint256 maximum) {
+        Invoice storage inv = _invoices[id];
+        minimum = inv.price + 1;
+        if (inv.grade == 0) return (minimum, inv.price);
+        uint256 tenor = inv.dueDate > block.timestamp ? inv.dueDate - block.timestamp : 0;
+        (maximum, , ) = quote(inv.faceValue, inv.grade - 1, tenor);
+        if (maximum > inv.faceValue) maximum = inv.faceValue;
+    }
+
+    /// @notice SME proposes a higher price instead of accepting or declining the offer.
+    function counterOffer(uint256 id, uint256 price) external {
+        Invoice storage inv = _invoices[id];
+        if (msg.sender != inv.supplier) revert NotSupplier();
+        if (inv.status != Status.Offered) revert WrongStatus(inv.status);
+        if (counterPrice[id] != 0) revert CounterPending();
+        (uint256 minimum, uint256 maximum) = counterOfferRange(id);
+        if (price < minimum || price > maximum) revert CounterOutOfRange(minimum, maximum);
+        counterPrice[id] = price;
+        emit CounterOffered(id, inv.price, price);
+    }
+
+    /// @notice ReceivaSG approves the counter (it becomes the offer) or rejects it
+    ///         (the original offer stands). Either way the SME then accepts or declines.
+    function reviewCounter(uint256 id, bool approve) external onlyRole(VERIFIER_ROLE) {
+        Invoice storage inv = _invoices[id];
+        if (inv.status != Status.Offered) revert WrongStatus(inv.status);
+        uint256 proposed = counterPrice[id];
+        if (proposed == 0) revert NoCounterPending();
+        delete counterPrice[id];
+        if (approve) {
+            inv.price = proposed;
+            inv.floorApplied = false;
+        }
+        emit CounterReviewed(id, approve, inv.price);
     }
 
     // ══════════════════════════════════════════════════════════════════

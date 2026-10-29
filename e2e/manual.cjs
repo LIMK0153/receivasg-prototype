@@ -5,7 +5,7 @@ const html = fs.readFileSync(path.join(__dirname, "..", "dist", "receivasg-proto
 const server = http.createServer((q, r) => { r.writeHead(200, { "content-type": "text/html" }); r.end(html); }).listen(0);
 const OUT = process.argv[2] || path.join(__dirname, "..", "e2e-shots");
 (async () => {
-  const b = await chromium.launch();
+  const b = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
   p.on("pageerror", (e) => errors.push(e.message));
@@ -24,12 +24,14 @@ const OUT = process.argv[2] || path.join(__dirname, "..", "e2e-shots");
   };
   await as("Meridian"); await p.click("#btn-submit-INV-2026-0415"); await toast("SME submit 0415");
   await as("ReceivaSG Ops"); await p.click("#btn-verify"); await toast("Ops verify (model grade)");
-  await as("Meridian"); await p.click("#btn-accept"); await toast("SME accept");
+  await as("Meridian"); await p.click("#btn-counter");
+  console.log("AAA counter-offer:", (await p.locator(".counter-form").innerText()).replace(/\s+/g, " "));
+  await p.click("#btn-accept"); await toast("SME accept");
   await as("Lion Gate"); const card = p.locator(".offer-card", { hasText: "INV-2026-0415" });
   await card.locator("input").fill("10000"); console.log("validation shown:", await card.locator(".field-err").innerText().catch(() => "none"));
   await card.locator("input").fill("25000"); await card.locator("button.btn").click(); await toast("Lion Gate commits 25,000");
-  await as("Harbourfront"); const card2 = p.locator(".offer-card", { hasText: "INV-2026-0415" });
-  await card2.locator("button.chip", { hasText: "Fill remaining" }).click(); await card2.locator("button.btn").click(); await toast("Harbourfront fills");
+  await as("Lim & Pang"); const card2 = p.locator(".offer-card", { hasText: "INV-2026-0415" });
+  await card2.locator("button.chip", { hasText: "Fill remaining" }).click(); await card2.locator("button.btn").click(); await toast("Lim & Pang fills");
   await as("Meridian"); console.log("SME balance:", await p.locator(".stat strong").first().innerText());
   await as("Unverified"); await nav("DDEx market");
   await p.locator("#btn-buy-0").click(); await toast("Unverified buys seeded listing");

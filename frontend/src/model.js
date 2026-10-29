@@ -63,6 +63,13 @@ export async function loadSnapshot(client) {
       noteSupply: 0,
       noteSymbol: "",
     };
+    x.counterPrice = 0;
+    if (x.status === 2) {
+      const [cp, range] = await Promise.all([read.spv.counterPrice(id), read.spv.counterOfferRange(id)]);
+      x.counterPrice = N(cp);
+      x.counterMin = N(range[0]);
+      x.counterMax = N(range[1]);
+    }
     if (x.note && x.note !== "0x0000000000000000000000000000000000000000") {
       const n = client.note(x.note);
       const [holders, supply, symbol, paused] = await Promise.all([n.holders(), n.totalSupply(), n.symbol(), n.paused()]);

@@ -22,7 +22,7 @@ async function rpc(method, params) {
 }
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || undefined });
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -57,7 +57,7 @@ async function rpc(method, params) {
   console.log("connected:", (await page.locator(".chainchip").innerText()).replace(/\s+/g, " "));
 
   // Switching accounts happens in the wallet (as in MetaMask); the page follows.
-  const wallet = async (k) => { await page.evaluate((a) => window.__setAccount(a), deployment.actors[k]); await page.waitForFunction((n) => document.querySelector("#btn-account")?.innerText.includes(n), { sme: "Meridian", admin: "ReceivaSG", investorA: "Lion Gate", investorB: "Harbourfront", investorC: "Jasmine", unverified: "Unverified", buyer: "Straits" }[k]); };
+  const wallet = async (k) => { await page.evaluate((a) => window.__setAccount(a), deployment.actors[k]); await page.waitForFunction((n) => document.querySelector("#btn-account")?.innerText.includes(n), { sme: "Meridian", admin: "ReceivaSG", investorA: "Lion Gate", investorB: "Lim & Pang", unverified: "Unverified", buyer: "Straits" }[k]); };
   const nav = (label) => page.locator(".topnav button", { hasText: label }).click();
   const toast = async (label) => {
     await page.waitForSelector(".toasts .notice", { timeout: 30000 });
@@ -70,9 +70,8 @@ async function rpc(method, params) {
   await wallet("admin"); await page.click("#btn-verify"); await toast("verify (wallet: admin)");
   await wallet("sme"); await page.click("#btn-accept"); await toast("accept (wallet: sme)");
   await wallet("investorA"); await card().locator("input").fill("50000"); await card().locator("button.btn").click(); await toast("commit (wallet: investorA)");
-  await wallet("investorB"); await card().locator("input").fill("30000"); await card().locator("button.btn").click(); await toast("commit (wallet: investorB)");
-  await wallet("investorC"); await card().locator("button.chip", { hasText: "Fill remaining" }).click(); await card().locator("button.btn").click(); await toast("fill (wallet: investorC)");
-  await nav("DDEx market"); await page.click("#btn-list"); await toast("list (wallet: investorC)");
+  await wallet("investorB"); await card().locator("button.chip", { hasText: "Fill remaining" }).click(); await card().locator("button.btn").click(); await toast("fill (wallet: investorB)");
+  await wallet("investorA"); await nav("DDEx market"); await page.click("#btn-list"); await toast("list (wallet: investorA)");
   await wallet("unverified"); await nav("DDEx market"); await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("buy (wallet: unverified)");
   await wallet("investorB"); await nav("DDEx market"); await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("buy (wallet: investorB)");
   await wallet("buyer"); await page.locator("button", { hasText: "to the SPV" }).first().click(); await toast("repay (wallet: buyer)");

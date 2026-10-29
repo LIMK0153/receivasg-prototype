@@ -37,6 +37,8 @@ export function describe(ev, client) {
     case "BuyerPaid": return `${who(client, a.payer)} paid ${sgd(n(a.amount))}; servicing fee ${sgd(n(a.servicingFee))}`;
     case "Distribution": return `Paid ${sgd(n(a.amount))} to ${who(client, a.holder)} for ${sgd(n(a.notes))} of notes`;
     case "InvoiceDefaulted": return `Invoice #${n(a.id)} defaulted; ${sgd(n(a.recovered))} recovered and distributed`;
+    case "CounterOffered": return `SME counter-offered ${sgd(n(a.counterPrice))} against the ${sgd(n(a.offeredPrice))} offer on invoice #${n(a.id)}`;
+    case "CounterReviewed": return a.approved ? `ReceivaSG approved the counter-offer: invoice #${n(a.id)} now priced at ${sgd(n(a.price))}` : `ReceivaSG rejected the counter-offer: invoice #${n(a.id)} stays at ${sgd(n(a.price))}`;
     case "OfferDeclined": return `SME declined the offer on invoice #${n(a.id)}`;
     case "InvoiceRejected": return `Invoice #${n(a.id)} rejected: ${a.reason}`;
     case "StatusUpdated": return `Invoice NFT #${n(a.tokenId)} status → ${["", "Submitted", "Offered", "Listed", "Funded", "Repaid", "Defaulted", "Cancelled"][n(a.status)]}`;

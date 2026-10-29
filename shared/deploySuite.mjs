@@ -65,7 +65,7 @@ export async function seedDemo({ ethers, contracts, signers, addresses, chainNow
   const ids = [
     ["sme", 1], ["bgSme1", 1], ["bgSme2", 1],
     ["buyer", 2], ["bgBuyer1", 2], ["bgBuyer2", 2], ["bgBuyer3", 2],
-    ["investorA", 3], ["investorB", 4], ["investorC", 3],
+    ["investorA", 3], ["investorB", 4],
   ];
   const reg = registry.connect(signers.admin);
   for (const [actor, category] of ids) {
@@ -76,7 +76,7 @@ export async function seedDemo({ ethers, contracts, signers, addresses, chainNow
   }
 
   // 2 ── Tokenised SGD deposits
-  const balances = { investorA: 500_000, investorB: 1_000_000, investorC: 150_000, buyer: 500_000, unverified: 50_000, admin: 100_000 };
+  const balances = { investorA: 500_000, investorB: 1_000_000, buyer: 500_000, unverified: 50_000, admin: 100_000 };
   const bank = tsgd.connect(signers.bank);
   for (const [actor, sgd] of Object.entries(balances)) {
     await send(`Credit S$${sgd.toLocaleString("en-SG")} tSGD → ${ACTORS[actor].name}`, bank.mint(addresses[actor], cents(sgd)));
@@ -117,14 +117,14 @@ export async function seedDemo({ ethers, contracts, signers, addresses, chainNow
   await invest("investorA", id3, 40_000);
   const inv3 = await spv.getInvoice(id3);
   const remaining = Number(inv3.price - inv3.committed) / 100;
-  await invest("investorC", id3, remaining); // fills the book → atomic settlement
+  await invest("investorB", id3, remaining); // fills the book → atomic settlement
 
-  // Jasmine lists part of her position on the (simulated) DDEx secondary market
+  // Lim & Pang lists part of its position on the (simulated) DDEx secondary market
   const noteAddr = await spv.noteOf(id3);
-  const note = new ethers.Contract(noteAddr, contracts.noteImpl.interface, signers.investorC);
+  const note = new ethers.Contract(noteAddr, contracts.noteImpl.interface, signers.investorB);
   const lot = cents(10_000); // S$10,000 face of notes
-  await send("Jasmine Koh: approve notes for DDEx", note.approve(await market.getAddress(), lot));
-  await send("Jasmine Koh: list S$10,000 face on DDEx at S$9,880", market.connect(signers.investorC).list(id3, lot, cents(9_880)));
+  await send("Lim & Pang: approve notes for DDEx", note.approve(await market.getAddress(), lot));
+  await send("Lim & Pang: list S$10,000 face on DDEx at S$9,880", market.connect(signers.investorB).list(id3, lot, cents(9_880)));
 
   return { backgroundIds: [id1, id2, id3] };
 }

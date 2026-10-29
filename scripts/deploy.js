@@ -38,7 +38,7 @@ async function main() {
     const walletFile = path.join(outDir, `${net}.demo-wallets.json`);
     const saved = fs.existsSync(walletFile) ? JSON.parse(fs.readFileSync(walletFile, "utf8")) : {};
     const gasEth = ethers.parseEther(process.env.DEMO_GAS_ETH || "0.01");
-    const needGas = ["sme", "buyer", "investorA", "investorB", "investorC", "unverified", "bgSme1", "bgSme2"];
+    const needGas = ["sme", "buyer", "investorA", "investorB", "unverified", "bgSme1", "bgSme2"];
     for (const k of keys) {
       if (signers[k]) continue;
       const w = saved[k] ? new ethers.Wallet(saved[k].privateKey) : ethers.Wallet.createRandom();

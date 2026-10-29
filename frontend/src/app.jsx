@@ -20,7 +20,7 @@ import ResultsView from "./views/ResultsView.jsx";
 const PERSONA_GROUPS = [
   ["Supply chain", ["sme", "buyer"]],
   ["Platform", ["admin"]],
-  ["Investors", ["investorA", "investorB", "investorC"]],
+  ["Investors", ["investorA", "investorB"]],
   ["Outside the network", ["unverified"]],
 ];
 const ROLE_LINE = {
@@ -29,7 +29,6 @@ const ROLE_LINE = {
   admin: "Verification, grading, KYC",
   investorA: "Accredited investor",
   investorB: "Institutional investor",
-  investorC: "Accredited individual",
   unverified: "No KYC record",
 };
 const defaultView = (p) => (p === "sme" ? "sme" : p === "buyer" ? "buyer" : p === "admin" ? "ops" : "investor");
@@ -145,7 +144,7 @@ function App() {
     setMenu(null);
   };
 
-  const steps = phase === "ready" && snap ? buildSteps({ snap, flags, canTimeTravel: client.mode === "sandbox" }) : [];
+  const steps = phase === "ready" && snap ? buildSteps({ snap, flags, ledger: client.ledger, canTimeTravel: client.mode === "sandbox" }) : [];
   const curIdx = steps.findIndex((s) => !s.done);
   const cur = steps[curIdx];
 
@@ -288,6 +287,7 @@ function App() {
               <div className="guide-actions">
                 {needSwitch ? <Button kind="ghost" onClick={() => goStep(cur)}>Switch to {ACTORS[cur.actor].short}</Button>
                   : cur.view && !navOn(cur.view[0], cur.view[1]) ? <Button kind="ghost" onClick={() => goStep(cur)}>Go to page</Button> : null}
+                {cur.optional ? <Button kind="ghost" onClick={() => setFlag(cur.skipFlag, true)}>Skip this step</Button> : null}
                 <button type="button" className="link" onClick={() => setStepsOpen(!stepsOpen)} aria-expanded={stepsOpen}>{stepsOpen ? "Hide steps" : "All steps"}</button>
                 <button type="button" className="link" onClick={() => setChecklist(false)}>Hide</button>
               </div>

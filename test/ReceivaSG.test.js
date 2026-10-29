@@ -18,7 +18,7 @@ describe("ReceivaSG prototype", function () {
 
   beforeEach(async () => {
     const s = await ethers.getSigners();
-    const keys = ["admin", "bank", "treasury", "sme", "buyer", "investorA", "investorB", "investorC", "unverified", "bgSme1", "bgSme2", "bgBuyer1", "bgBuyer2", "bgBuyer3"];
+    const keys = Object.keys(constants.ACTORS);
     a = {};
     keys.forEach((k, i) => (a[k] = s[i]));
     c = await suite.deployCore({ ethers, artifacts, admin: a.admin, bank: a.bank, treasury: a.treasury });
@@ -49,13 +49,18 @@ describe("ReceivaSG prototype", function () {
     return c.spv.connect(who).commit(id, S(sgd));
   }
 
-  async function fundMain() {
+  async function offered(grade = 2) {
     const { id } = await submitMain();
-    await c.spv.connect(a.admin).verifyAndGrade(id, 2); // A
+    await c.spv.connect(a.admin).verifyAndGrade(id, grade);
+    return id;
+  }
+
+  // Press-release flow: Lion Gate S$50,000 + Lim & Pang S$48,000 = S$98,000
+  async function fundMain() {
+    const id = await offered(2); // A
     await c.spv.connect(a.sme).acceptOffer(id);
     await invest(a.investorA, id, 50_000);
-    await invest(a.investorB, id, 30_000);
-    await invest(a.investorC, id, 18_000);
+    await invest(a.investorB, id, 48_000);
     return id;
   }
 
@@ -70,8 +75,7 @@ describe("ReceivaSG prototype", function () {
   });
 
   it("prices the press-release example: S$100,000, 90 days, grade A → S$98,000", async () => {
-    const { id } = await submitMain();
-    await c.spv.connect(a.admin).verifyAndGrade(id, 2);
+    const id = await offered(2);
     const inv = await c.spv.getInvoice(id);
     expect(inv.price).to.equal(S(98_000));
     expect(inv.floorApplied).to.equal(false);
@@ -79,8 +83,7 @@ describe("ReceivaSG prototype", function () {
   });
 
   it("true sale on acceptance: Invoice NFT minted to the SPV and note series created", async () => {
-    const { id } = await submitMain();
-    await c.spv.connect(a.admin).verifyAndGrade(id, 2);
+    const id = await offered(2);
     await expect(c.spv.connect(a.sme).acceptOffer(id))
       .to.emit(c.spv, "NoticeOfAssignment").withArgs(id, a.buyer.address, await c.spv.getAddress());
     expect(await c.nft.ownerOf(id)).to.equal(await c.spv.getAddress());
@@ -90,20 +93,18 @@ describe("ReceivaSG prototype", function () {
   });
 
   it("pooled funding: cash stays with investors until the book fills, then settles atomically", async () => {
-    const { id } = await submitMain();
-    await c.spv.connect(a.admin).verifyAndGrade(id, 2);
+    const id = await offered(2);
     await c.spv.connect(a.sme).acceptOffer(id);
     const smeBefore = await c.tsgd.balanceOf(a.sme.address);
     const aBefore = await c.tsgd.balanceOf(a.investorA.address);
 
     await invest(a.investorA, id, 50_000);
-    await invest(a.investorB, id, 30_000);
     // no escrow: committed cash has not moved yet
     expect(await c.tsgd.balanceOf(a.investorA.address)).to.equal(aBefore);
     expect(await c.tsgd.balanceOf(await c.spv.getAddress())).to.equal(0n);
 
-    const tx = invest(a.investorC, id, 18_000); // fills S$98,000
-    await expect(tx).to.emit(c.spv, "AtomicSettlement").withArgs(id, a.sme.address, S(98_000), 3, S(100_000));
+    const tx = invest(a.investorB, id, 48_000); // fills S$98,000
+    await expect(tx).to.emit(c.spv, "AtomicSettlement").withArgs(id, a.sme.address, S(98_000), 2, S(100_000));
 
     expect(await c.tsgd.balanceOf(a.sme.address) - smeBefore).to.equal(S(98_000));
     expect(await c.tsgd.balanceOf(await c.spv.getAddress())).to.equal(0n); // no float
@@ -111,7 +112,6 @@ describe("ReceivaSG prototype", function () {
     expect(inv.status).to.equal(4n);
     const n = note(inv.note);
     expect(await n.totalSupply()).to.equal(S(100_000)); // 1 note = S$1 face
-    // Investor A paid S$50,000 for 50,000/98,000 of the face value
     expect(await n.balanceOf(a.investorA.address)).to.equal((S(50_000) * S(100_000)) / S(98_000));
   });
 
@@ -154,37 +154,36 @@ describe("ReceivaSG prototype", function () {
   });
 
   it("unverified wallet cannot invest even though it holds tSGD", async () => {
-    const { id } = await submitMain();
-    await c.spv.connect(a.admin).verifyAndGrade(id, 2);
+    const id = await offered(2);
     await c.spv.connect(a.sme).acceptOffer(id);
     await c.tsgd.connect(a.unverified).approve(await c.spv.getAddress(), S(10_000));
     await expect(c.spv.connect(a.unverified).commit(id, S(10_000)))
       .to.be.revertedWithCustomError(c.spv, "NotEligibleInvestor");
   });
 
-  it("secondary trade on DDEx is atomic DvP and changes who gets paid at maturity", async () => {
+  it("Lion Gate sells all its notes on DDEx to Lim & Pang, who is paid the full amount at maturity", async () => {
     const id = await fundMain();
     const n = note((await c.spv.getInvoice(id)).note);
-    const lot = await n.balanceOf(a.investorC.address);
-    await n.connect(a.investorC).approve(await c.market.getAddress(), lot);
-    await c.market.connect(a.investorC).list(id, lot, S(18_200));
+    const lot = await n.balanceOf(a.investorA.address);
+    await n.connect(a.investorA).approve(await c.market.getAddress(), lot);
+    await c.market.connect(a.investorA).list(id, lot, S(50_340));
     const listingId = (await c.market.listingCount()) - 1n;
 
     // unverified buyer is blocked inside the note contract
-    await c.tsgd.connect(a.unverified).approve(await c.market.getAddress(), S(18_200));
+    await c.tsgd.connect(a.unverified).approve(await c.market.getAddress(), S(50_340));
     await expect(c.market.connect(a.unverified).buy(listingId)).to.be.revertedWithCustomError(n, "TransferNotCompliant").withArgs(5);
 
-    const cBefore = await c.tsgd.balanceOf(a.investorC.address);
-    await c.tsgd.connect(a.investorB).approve(await c.market.getAddress(), S(18_200));
+    const aBefore = await c.tsgd.balanceOf(a.investorA.address);
+    await c.tsgd.connect(a.investorB).approve(await c.market.getAddress(), S(50_340));
     await c.market.connect(a.investorB).buy(listingId);
-    expect(await c.tsgd.balanceOf(a.investorC.address) - cBefore).to.equal(S(18_200));
-    expect(await n.balanceOf(a.investorC.address)).to.equal(0n);
+    expect(await c.tsgd.balanceOf(a.investorA.address) - aBefore).to.equal(S(50_340));
+    expect(await n.balanceOf(a.investorA.address)).to.equal(0n);
+    expect(await n.balanceOf(a.investorB.address)).to.equal(S(100_000));
 
     await c.tsgd.connect(a.buyer).approve(await c.spv.getAddress(), S(100_000));
     const bBefore = await c.tsgd.balanceOf(a.investorB.address);
     await c.spv.connect(a.buyer).repay(id);
-    const bHold = (S(30_000) * S(100_000)) / S(98_000) + lot;
-    expect(await c.tsgd.balanceOf(a.investorB.address) - bBefore).to.be.closeTo((S(99_900) * bHold) / S(100_000), 2n);
+    expect(await c.tsgd.balanceOf(a.investorB.address) - bBefore).to.equal(S(99_900));
   });
 
   it("rejects the same e-invoice twice (double-pledge guard)", async () => {
@@ -194,35 +193,34 @@ describe("ReceivaSG prototype", function () {
       .to.be.revertedWithCustomError(c.spv, "DuplicateInvoice").withArgs(id);
   });
 
-  it("applies the 85% minimum financing percentage", async () => {
-    const [price, floorApplied] = await c.spv.quote(S(40_000), 6, 240 * DAY);
-    expect(price).to.equal(S(34_000));
-    expect(floorApplied).to.equal(true);
-    const [p2, f2] = await c.spv.quote(S(40_000), 6, 90 * DAY);
-    expect(p2).to.equal(S(37_200)); // 7% discount, above floor
-    expect(f2).to.equal(false);
+  it("prices CCC at 85% of face for 90 days, and never below the 85% minimum", async () => {
+    const [p90] = await c.spv.quote(S(100_000), 6, 90 * DAY);
+    expect(p90).to.equal(S(85_000));
+    const [p30] = await c.spv.quote(S(100_000), 6, 30 * DAY);
+    expect(p30).to.equal(S(95_000));
+    const [p240, floored] = await c.spv.quote(S(40_000), 6, 240 * DAY);
+    expect(p240).to.equal(S(34_000));
+    expect(floored).to.equal(true);
   });
 
   it("enforces higher minimum tickets for higher grades", async () => {
-    await c.tsgd.connect(a.investorC).approve(await c.spv.getAddress(), S(5_000));
-    await expect(c.spv.connect(a.investorC).commit(1, S(5_000))) // invoice 1 is AAA
+    await c.tsgd.connect(a.investorA).approve(await c.spv.getAddress(), S(50_000));
+    await expect(c.spv.connect(a.investorA).commit(1, S(5_000))) // invoice 1 is AAA
       .to.be.revertedWithCustomError(c.spv, "BelowMinimumTicket").withArgs(S(25_000));
   });
 
   it("settlement is all-or-nothing: one failed cash leg reverts everything", async () => {
-    const { id } = await submitMain();
-    await c.spv.connect(a.admin).verifyAndGrade(id, 2);
+    const id = await offered(2);
     await c.spv.connect(a.sme).acceptOffer(id);
     await invest(a.investorA, id, 50_000);
-    await invest(a.investorB, id, 30_000);
-    await c.tsgd.connect(a.investorA).approve(await c.spv.getAddress(), 0); // A pulls approval
+    await c.tsgd.connect(a.investorA).approve(await c.spv.getAddress(), 0); // Lion Gate pulls approval
     const smeBefore = await c.tsgd.balanceOf(a.sme.address);
-    await expect(invest(a.investorC, id, 18_000)).to.be.revertedWithCustomError(c.spv, "SettlementFailed").withArgs(a.investorA.address);
+    await expect(invest(a.investorB, id, 48_000)).to.be.revertedWithCustomError(c.spv, "SettlementFailed").withArgs(a.investorA.address);
     expect(await c.tsgd.balanceOf(a.sme.address)).to.equal(smeBefore);
     // ops removes the failed commitment, book reopens, and can be filled again
     await c.spv.connect(a.admin).removeCommitment(id, a.investorA.address);
-    expect((await c.spv.getInvoice(id)).committed).to.equal(S(30_000));
-    await invest(a.investorB, id, 68_000);
+    expect((await c.spv.getInvoice(id)).committed).to.equal(0n);
+    await invest(a.investorB, id, 98_000);
     expect((await c.spv.getInvoice(id)).status).to.equal(4n);
   });
 
@@ -248,9 +246,67 @@ describe("ReceivaSG prototype", function () {
   });
 
   it("only the SME that owns the invoice can accept the offer", async () => {
-    const { id } = await submitMain();
-    await c.spv.connect(a.admin).verifyAndGrade(id, 2);
+    const id = await offered(2);
     await expect(c.spv.connect(a.bgSme1).acceptOffer(id)).to.be.revertedWithCustomError(c.spv, "NotSupplier");
     await expect(c.spv.connect(a.sme).verifyAndGrade(id, 0)).to.be.reverted; // not a verifier
+  });
+
+  describe("counter-offers", () => {
+    it("SME counters up to the next-better grade's price; ReceivaSG approves; the counter becomes the price", async () => {
+      const id = await offered(1); // AA → S$98,400 for 90 days
+      expect((await c.spv.getInvoice(id)).price).to.equal(S(98_400));
+      const [min, max] = await c.spv.counterOfferRange(id);
+      expect(min).to.equal(S(98_400) + 1n);
+      expect(max).to.equal(S(98_750)); // AAA price for the same tenor
+      await expect(c.spv.connect(a.sme).counterOffer(id, S(98_600)))
+        .to.emit(c.spv, "CounterOffered").withArgs(id, S(98_400), S(98_600));
+      // cannot accept while a counter is pending
+      await expect(c.spv.connect(a.sme).acceptOffer(id)).to.be.revertedWithCustomError(c.spv, "CounterPending");
+      await expect(c.spv.connect(a.admin).reviewCounter(id, true))
+        .to.emit(c.spv, "CounterReviewed").withArgs(id, true, S(98_600));
+      await c.spv.connect(a.sme).acceptOffer(id);
+      await invest(a.investorA, id, 50_000);
+      await invest(a.investorB, id, 48_600);
+      expect((await c.spv.getInvoice(id)).status).to.equal(4n);
+    });
+
+    it("a rejected counter leaves the original offer standing", async () => {
+      const id = await offered(1);
+      await c.spv.connect(a.sme).counterOffer(id, S(98_700));
+      await c.spv.connect(a.admin).reviewCounter(id, false);
+      expect((await c.spv.getInvoice(id)).price).to.equal(S(98_400));
+      expect(await c.spv.counterPrice(id)).to.equal(0n);
+      await c.spv.connect(a.sme).acceptOffer(id);
+    });
+
+    it("rejects counters outside the allowed range", async () => {
+      const id = await offered(1);
+      await expect(c.spv.connect(a.sme).counterOffer(id, S(99_000)))
+        .to.be.revertedWithCustomError(c.spv, "CounterOutOfRange").withArgs(S(98_400) + 1n, S(98_750));
+      await expect(c.spv.connect(a.sme).counterOffer(id, S(98_000)))
+        .to.be.revertedWithCustomError(c.spv, "CounterOutOfRange");
+    });
+
+    it("a CCC invoice can be countered up to the B price", async () => {
+      const id = await offered(6); // CCC → S$85,000
+      const [, max] = await c.spv.counterOfferRange(id);
+      expect(max).to.equal(S(95_000)); // B: 5% per 90 days
+      await c.spv.connect(a.sme).counterOffer(id, S(90_000));
+      await c.spv.connect(a.admin).reviewCounter(id, true);
+      expect((await c.spv.getInvoice(id)).price).to.equal(S(90_000));
+    });
+
+    it("AAA invoices have no room to counter", async () => {
+      const id = await offered(0);
+      await expect(c.spv.connect(a.sme).counterOffer(id, S(98_800))).to.be.revertedWithCustomError(c.spv, "CounterOutOfRange");
+    });
+
+    it("only the SME can counter and only ReceivaSG can review", async () => {
+      const id = await offered(1);
+      await expect(c.spv.connect(a.bgSme1).counterOffer(id, S(98_600))).to.be.revertedWithCustomError(c.spv, "NotSupplier");
+      await c.spv.connect(a.sme).counterOffer(id, S(98_600));
+      await expect(c.spv.connect(a.sme).reviewCounter(id, true)).to.be.reverted;
+      await expect(c.spv.connect(a.admin).reviewCounter(id + 99, true)).to.be.reverted;
+    });
   });
 });

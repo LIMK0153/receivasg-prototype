@@ -41,6 +41,11 @@ const ERROR_TEXT = {
   TooManyCommitments: () => "This invoice has reached its maximum number of investors.",
   NotYetInDefault: (a) => `Not in default yet. A default can be recorded after ${new Date(Number(a[0]) * 1000).toLocaleDateString("en-SG")}.`,
   InvalidGrade: () => "Grade must be between AAA and CCC.",
+  CounterOutOfRange: (a) => Number(a[1]) < Number(a[0])
+    ? "AAA invoices already get the best price, so there is no room for a counter-offer."
+    : `A counter-offer must be between S$${(Number(a[0]) / 100).toLocaleString("en-SG", { minimumFractionDigits: 2 })} and S$${(Number(a[1]) / 100).toLocaleString("en-SG", { minimumFractionDigits: 2 })}.`,
+  CounterPending: () => "A counter-offer is waiting for ReceivaSG's review. Wait for the decision before accepting.",
+  NoCounterPending: () => "There is no counter-offer to review on this invoice.",
   TransferNotCompliant: (a) => `Blocked by the note contract (ERC-3643 check): ${COMPLIANCE_CODES[Number(a[0])]}.`,
   InsufficientAllowance: () => "The marketplace isn't approved to move these notes yet.",
   NonTransferable: () => "Invoice NFTs are audit records and cannot be transferred.",

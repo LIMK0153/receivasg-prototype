@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { ethers } from "ethers";
-import { ACTORS, BUYER_CREDIT, CATEGORY, GRADES, MIN_FINANCING_PCT, creditScore, gradeFromScore, DAY } from "../../../shared/constants.mjs";
+import { ACTORS, BUYER_CREDIT, CATEGORY, GRADES, MIN_FINANCING_PCT, TBILL, creditScore, gradeFromScore, DAY } from "../../../shared/constants.mjs";
 import { hashEInvoice } from "../../../shared/einvoice.mjs";
 import { sgd, date, pct } from "../format.js";
 import { GradeChip, StatusPill, Hash, Button, Empty, Notice } from "../ui.jsx";
-import { actorName, actorShort } from "../model.js";
+import { actorName, actorShort, annualised, payoutFor } from "../model.js";
 
 const TABS = [
   ["queue", "Verification queue"],
@@ -24,7 +24,7 @@ export function quoteLocal(face, grade, tenorSecs, rates) {
 }
 
 export default function OpsView({ snap, inbox, actions, run, busy, tab, setTab, client, hideTabs }) {
-  const queue = snap.invoices.filter((i) => i.status === 1);
+  const queue = snap.invoices.filter((i) => i.status === 1 || (i.status === 2 && i.counterPrice > 0));
   return (
     <div className="view">
       <header className="view-head">
@@ -33,7 +33,7 @@ export default function OpsView({ snap, inbox, actions, run, busy, tab, setTab, 
           <p className="sub">Peppol Access Point, credit engine and ERC-3643 agent for the SPV</p>
         </div>
         <div className="stat-row">
-          <div className="stat"><span>Awaiting verification</span><strong>{queue.length}</strong></div>
+          <div className="stat"><span>Waiting for you</span><strong>{queue.length}</strong></div>
           <div className="stat"><span>Servicing fees earned</span><strong>{sgd(snap.balances.treasury)}</strong></div>
         </div>
       </header>
@@ -56,14 +56,63 @@ function Queue({ queue, snap, inbox, actions, run, busy }) {
   if (!queue.length) {
     return (
       <section className="panel">
-        <Empty>No invoices waiting. When an SME requests financing, it appears here for InvoiceNow verification and grading.</Empty>
+        <Empty>Nothing waiting. New financing requests and SME counter-offers appear here.</Empty>
       </section>
     );
   }
   return (
     <div className="stack">
-      {queue.map((inv) => <Verify key={inv.id} inv={inv} snap={snap} inbox={inbox} actions={actions} run={run} busy={busy} />)}
+      {queue.map((inv) => inv.status === 2
+        ? <CounterReview key={inv.id} inv={inv} snap={snap} actions={actions} run={run} busy={busy} />
+        : <Verify key={inv.id} inv={inv} snap={snap} inbox={inbox} actions={actions} run={run} busy={busy} />)}
     </div>
+  );
+}
+
+function CounterReview({ inv, snap, actions, run, busy }) {
+  const days = Math.max(1, Math.ceil((inv.dueDate - snap.time) / DAY));
+  const payout = payoutFor(inv.face, snap.feeBps);
+  const yOffer = annualised(inv.price, payout, days);
+  const yCounter = annualised(inv.counterPrice, payout, days);
+  const yCeiling = annualised(inv.counterMax, payout, days);
+  const better = GRADES[inv.grade - 1];
+  const spread = yCounter - TBILL.rate;
+  return (
+    <section className="panel verify">
+      <div className="verify-top">
+        <div>
+          <h2>Counter-offer on {inv.ref} <span className="muted-s">#{inv.id}</span></h2>
+          <p className="sub">{actorName(inv.supplier)} → {actorName(inv.buyer)} · {sgd(inv.face)} · due {date(inv.dueDate)} ({days} days)</p>
+        </div>
+        <span className="pill warn">Counter-offer</span>
+      </div>
+      <div className="quote quote-4">
+        <div><span>Contract offer (grade {GRADES[inv.grade]})</span><strong>{sgd(inv.price)}</strong></div>
+        <div className="hl"><span>SME asks for</span><strong>{sgd(inv.counterPrice)}</strong></div>
+        <div><span>Most allowed (grade {better} price)</span><strong>{sgd(inv.counterMax)}</strong></div>
+        <div><span>Extra paid to the SME</span><strong>{sgd(inv.counterPrice - inv.price)}</strong></div>
+      </div>
+      <table className="score">
+        <thead><tr><td>What investors would earn, after the 0.10% fee</td><td className="r">per year</td></tr></thead>
+        <tbody>
+          <tr><td>At the contract offer (fair for grade {GRADES[inv.grade]})</td><td className="r">{pct(yOffer, 2)}</td></tr>
+          <tr><td><strong>At the SME's counter-offer</strong></td><td className="r"><strong>{pct(yCounter, 2)}</strong></td></tr>
+          <tr><td>At the most allowed (what a grade-{better} buyer would pay)</td><td className="r">{pct(yCeiling, 2)}</td></tr>
+          <tr><td>{TBILL.label}</td><td className="r">{pct(TBILL.rate, 2)}</td></tr>
+        </tbody>
+      </table>
+      <p className="muted-s">
+        Approving lowers investors' return from {pct(yOffer, 2)} to {pct(yCounter, 2)} p.a., still {pct(spread, 2)} above T-bills. The contract has already checked the price is within range. Approve if that return still pays investors enough for {actorName(inv.buyer)}'s grade-{GRADES[inv.grade]} risk; otherwise reject and the original offer stands.
+      </p>
+      <div className="row-actions">
+        <Button id="btn-approve-counter" busy={busy[`approve-${inv.id}`]} onClick={() => run(`approve-${inv.id}`, () => actions.reviewCounter(inv.id, inv.ref, true), `Counter-offer approved. ${inv.ref} is now offered at ${sgd(inv.counterPrice)}.`)}>
+          Approve {sgd(inv.counterPrice)}
+        </Button>
+        <Button id="btn-reject-counter" kind="ghost" busy={busy[`rejectc-${inv.id}`]} onClick={() => run(`rejectc-${inv.id}`, () => actions.reviewCounter(inv.id, inv.ref, false), `Counter-offer rejected. The ${sgd(inv.price)} offer stands.`)}>
+          Reject, keep {sgd(inv.price)}
+        </Button>
+      </div>
+    </section>
   );
 }
 

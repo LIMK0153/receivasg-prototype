@@ -64,7 +64,7 @@ function InboxRow({ entry, snap, persona, actions, run, busy }) {
       <div className="inbox-main">
         <div className="inbox-id">
           <strong>{doc.id}</strong>
-          <span>{doc.buyer.name}</span>
+          <span><em className="tag">Buyer</em> {doc.buyer.name}</span>
         </div>
         <div className="num">{sgd(doc.totals.payable * 100)}</div>
         <div className="inbox-terms">
@@ -148,12 +148,21 @@ function FinancingCard({ inv, snap, persona, actions, run, busy, ledger }) {
   const settleEntry = ledger.find((e) => e.events?.some((ev) => ev.name === "AtomicSettlement" && Number(ev.args.id) === inv.id));
   const paidEntry = ledger.find((e) => e.events?.some((ev) => ev.name === "BuyerPaid" && Number(ev.args.id) === inv.id));
   const cost = inv.face - inv.price;
+  const [counterOpen, setCounterOpen] = useState(false);
+  const [counterAmt, setCounterAmt] = useState("");
+  const counterEvents = ledger.flatMap((e) => (e.events || []).filter((ev) => (ev.name === "CounterOffered" || ev.name === "CounterReviewed") && Number(ev.args.id) === inv.id));
+  const lastReview = counterEvents.find((ev) => ev.name === "CounterReviewed"); // ledger is newest first
+  const lastCounter = counterEvents.find((ev) => ev.name === "CounterOffered");
+  const pending = inv.counterPrice > 0;
+  const canCounter = inv.counterMax >= inv.counterMin;
+  const counterCents = Math.round(Number(String(counterAmt).replace(/[^0-9.]/g, "")) * 100) || 0;
+  const counterErr = !counterCents ? null : counterCents < inv.counterMin || counterCents > inv.counterMax ? `Enter between ${sgd(inv.counterMin, { dp: 2 })} and ${sgd(inv.counterMax, { dp: 2 })}.` : null;
   return (
     <article className="fin-card">
       <div className="fin-top">
         <div>
           <h3>{inv.ref} <span className="muted-s">#{inv.id}</span></h3>
-          <p className="sub">{actorName(inv.buyer)} · {sgd(inv.face)} · due {date(inv.dueDate)}</p>
+          <p className="sub"><em className="tag">Buyer</em> {actorName(inv.buyer)} · {sgd(inv.face)} · due {date(inv.dueDate)}</p>
         </div>
         <StatusPill status={inv.status} />
       </div>
@@ -168,7 +177,7 @@ function FinancingCard({ inv, snap, persona, actions, run, busy, ledger }) {
           <div className="offer-main">
             <GradeChip grade={inv.grade} size="lg" />
             <div>
-              <span className="offer-k">ReceivaSG offers</span>
+              <span className="offer-k">{lastReview?.args.approved && !pending ? "Your counter-offer was approved. ReceivaSG offers" : "ReceivaSG offers"}</span>
               <strong className="offer-amt">{sgd(inv.price)}</strong>
               <span className="offer-sub">{pct((inv.price / inv.face) * 100, 1)} of face value, paid today · cost {sgd(cost)} for {days(tenor)}</span>
             </div>
@@ -190,14 +199,49 @@ function FinancingCard({ inv, snap, persona, actions, run, busy, ledger }) {
               <em>Borrowed against the invoice; interest and fees apply; the balance comes after the buyer pays</em>
             </div>
           </div>
-          <div className="row-actions">
-            <Button id="btn-accept" busy={busy[`accept-${inv.id}`]} onClick={() => run(`accept-${inv.id}`, () => actions.acceptOffer(persona, inv.id, inv.ref), `${inv.ref} sold to the SPV. Investors can now fund it.`)}>
-              Accept and sell for {sgd(inv.price)}
-            </Button>
-            <Button kind="ghost" busy={busy[`decline-${inv.id}`]} onClick={() => run(`decline-${inv.id}`, () => actions.declineOffer(persona, inv.id, inv.ref), "Offer declined. The invoice stays with you.")}>
-              Decline
-            </Button>
-          </div>
+          {lastReview && !lastReview.args.approved && !pending ? (
+            <p className="fin-msg">ReceivaSG rejected your counter-offer{lastCounter ? ` of ${sgd(Number(lastCounter.args.counterPrice))}` : ""}. The original offer stands: accept it, counter again or decline.</p>
+          ) : null}
+          {pending ? (
+            <div className="counter-pending">
+              <strong>Counter-offer of {sgd(inv.counterPrice)} sent</strong>
+              <span>ReceivaSG is reviewing it. You can accept once they approve or reject it.</span>
+            </div>
+          ) : (
+            <div className="row-actions">
+              <Button id="btn-accept" busy={busy[`accept-${inv.id}`]} onClick={() => run(`accept-${inv.id}`, () => actions.acceptOffer(persona, inv.id, inv.ref), `${inv.ref} sold to the SPV. Investors can now fund it.`)}>
+                Accept and sell for {sgd(inv.price)}
+              </Button>
+              <Button id="btn-counter" kind="ghost" onClick={() => setCounterOpen(!counterOpen)}>
+                Counter-offer
+              </Button>
+              <Button kind="ghost" busy={busy[`decline-${inv.id}`]} onClick={() => run(`decline-${inv.id}`, () => actions.declineOffer(persona, inv.id, inv.ref), "Offer declined. The invoice stays with you.")}>
+                Decline
+              </Button>
+            </div>
+          )}
+          {counterOpen && !pending ? (
+            <div className="counter-form">
+              {canCounter ? (
+                <>
+                  <label htmlFor={`counter-${inv.id}`}>Propose a higher price (S$)</label>
+                  <p className="muted-s">
+                    You can ask for up to {sgd(inv.counterMax, { dp: 2 })}, which is what a {GRADES[inv.grade - 1]}-grade invoice would receive for the same term. ReceivaSG decides whether the higher price still pays investors enough for the buyer's risk.
+                  </p>
+                  <div className="amt-row">
+                    <input id={`counter-${inv.id}`} className="input" inputMode="decimal" placeholder={`e.g. ${((inv.price + inv.counterMax) / 200).toFixed(0)}`} value={counterAmt} onChange={(e) => setCounterAmt(e.target.value)} />
+                    <Button id="btn-send-counter" busy={busy[`counter-${inv.id}`]} disabled={!counterCents || !!counterErr}
+                      onClick={() => run(`counter-${inv.id}`, async () => { const r = await actions.counterOffer(persona, inv.id, inv.ref, counterCents); setCounterOpen(false); setCounterAmt(""); return r; }, `Counter-offer of ${sgd(counterCents)} sent to ReceivaSG for review.`)}>
+                      Send counter-offer
+                    </Button>
+                  </div>
+                  {counterErr ? <p className="field-err">{counterErr}</p> : null}
+                </>
+              ) : (
+                <p className="muted-s">This invoice is graded AAA, which already gets the best price, so there's no room for a counter-offer.</p>
+              )}
+            </div>
+          ) : null}
         </div>
       ) : null}
 

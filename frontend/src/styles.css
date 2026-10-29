@@ -334,6 +334,14 @@ table.score { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
 .quote > div { display: grid; padding: 8px 10px; background: var(--surface-2); border-radius: var(--r); border: 1px solid var(--line); }
 .quote span { font-size: 0.74rem; color: var(--muted); }
 .quote strong { font: 600 1.05rem var(--display); font-variant-numeric: tabular-nums; }
+.quote-4 { grid-template-columns: repeat(4, 1fr); }
+.quote > div.hl { border-color: var(--signal); background: var(--signal-weak); }
+.score thead td { color: var(--muted); font-size: 0.76rem; padding-bottom: 6px; }
+.tag { font-style: normal; font-size: 0.68rem; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; margin-right: 2px; vertical-align: 1px; }
+.counter-form { display: grid; gap: 6px; padding: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r); }
+.counter-form label { font-size: 0.84rem; font-weight: 600; }
+.counter-pending { display: grid; gap: 2px; padding: 10px 12px; border-left: 3px solid var(--signal); background: var(--signal-weak); border-radius: 0 var(--r) var(--r) 0; font-size: 0.88rem; }
+.counter-pending span { color: var(--ink-2); }
 
 /* investor */
 .filter { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -428,6 +436,7 @@ table.score { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
   .inbox-main .inbox-terms, .inbox-main > div:nth-child(4) { grid-column: 1 / -1; }
   .inbox-actions { grid-column: 1 / -1; justify-content: flex-start; }
   .verify-grid, .compare, .cmp3, .einv-parties { grid-template-columns: 1fr; }
+  .quote-4 { grid-template-columns: 1fr 1fr; }
   .list-form { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
@@ -438,7 +447,7 @@ table.score { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
   .acct-text { display: none; }
   .chainchip { display: none; }
   .menu { position: fixed; left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); top: 64px; min-width: 0; }
-  .quote { grid-template-columns: 1fr; }
+  .quote, .quote-4 { grid-template-columns: 1fr; }
   .kv div { grid-template-columns: 1fr; gap: 0; }
   ol.rail .lbl { font-size: 0.66rem; }
   .market { grid-template-columns: minmax(0, 1fr); }
