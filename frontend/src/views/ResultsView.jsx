@@ -2,7 +2,7 @@ import React from "react";
 import { ACTORS, TBILL, TRADITIONAL, DAY } from "../../../shared/constants.mjs";
 import { sgd, pct, date } from "../format.js";
 import { GradeChip, Hash, Empty } from "../ui.jsx";
-import { actorShort } from "../model.js";
+import { actorShort, investorResults, tokens } from "../model.js";
 import { mainInvoice } from "../guided.js";
 
 export default function ResultsView({ snap, ledger, client }) {
@@ -27,25 +27,23 @@ export default function ResultsView({ snap, ledger, client }) {
   const maturityTs = early ? m.dueDate : m.closedAt;
   const tenorDays = Math.round((maturityTs - m.fundedAt) / DAY);
 
-  // Per-investor cash flows: [amount, time] with negative = paid out
-  const flows = {};
-  const add = (k, amt, t) => (flows[k] ||= []).push([amt, t]);
-  for (const c of m.commitments) add(c.investor, -c.cash, m.fundedAt);
-  for (const t of trades) { add(t.buyer, -t.price, t.filledAt); add(t.seller, t.price, t.filledAt); }
-  for (const d of dists) add(client.actorOf(d.args.holder) || d.args.holder, Number(d.args.amount), maturityTs);
-
-  const rows = Object.entries(flows).map(([k, fs]) => {
-    const paidIn = -fs.filter(([a]) => a < 0).reduce((s, [a]) => s + a, 0);
-    const back = fs.filter(([a]) => a > 0).reduce((s, [a]) => s + a, 0);
-    const end = Math.max(...fs.map(([, t]) => t));
-    // money-weighted: profit / Σ(cash × days outstanding)
-    const cashDays = fs.filter(([a]) => a < 0).reduce((s, [a, t]) => s + -a * ((end - t) / DAY), 0);
-    const ann = cashDays > 0 ? ((back - paidIn) / cashDays) * 365 * 100 : 0;
-    const tbillEarn = (cashDays / 365) * (TBILL.rate / 100);
-    const sold = trades.some((t) => t.seller === k);
-    const heldDays = cashDays / Math.max(paidIn, 1);
-    return { k, paidIn, back, profit: back - paidIn, ann: heldDays >= 1 ? ann : null, tbillEarn, days: Math.round(heldDays), sold };
-  }).sort((a, b) => b.paidIn - a.paidIn);
+  const who = (addr) => client.actorOf(addr) || addr;
+  const rows = investorResults({
+    commitments: m.commitments,
+    trades,
+    dists: dists.map((d) => ({ holder: who(d.args.holder), amount: Number(d.args.amount), notes: Number(d.args.notes) })),
+    fundedAt: m.fundedAt,
+    maturityTs,
+  });
+  const day = (t) => Math.round((t - m.fundedAt) / DAY);
+  const story = (r) => {
+    const parts = [];
+    if (r.invested) parts.push(`Invested ${sgd(r.invested)} at issue.`);
+    for (const b of r.buys) parts.push(`Bought ${tokens(b.amount)} on DDEx on day ${day(b.filledAt)} for ${sgd(b.price)}.`);
+    for (const t of r.sales) parts.push(`Sold ${r.soldAll && r.sales.length === 1 ? "all " : ""}${tokens(t.amount)} on DDEx on day ${day(t.filledAt)} for ${sgd(t.price)}.`);
+    if (r.maturityTokens) parts.push(r.sales.length ? `Kept ${tokens(r.maturityTokens)} to maturity.` : `Held ${tokens(r.maturityTokens)} to maturity.`);
+    return parts.join(" ");
+  };
 
   const smeCostPct = ((m.face - m.price) / m.face) * 100;
 
@@ -71,19 +69,20 @@ export default function ResultsView({ snap, ledger, client }) {
       <section className="panel">
         <div className="panel-head">
           <h2>Investors</h2>
-          <p>Returns are annualised on the cash each investor had outstanding, and compared with putting the same cash in the {TBILL.label} at {pct(TBILL.rate)} p.a. ({TBILL.source}).{early ? " The buyer paid before the due date (a live network's clock can't be fast-forwarded), so held-to-maturity returns are measured over the scheduled tenor. Positions held for under a day show no annualised figure." : ""}</p>
+          <p>"Paid in" is everything an investor spent on these tokens. What came back is split into money from a DDEx sale and the payout at maturity. Annualised returns count each sum only while it was invested, so cash returned early by a DDEx sale stops counting from the day it came back. T-bill comparison: the same cash, for the same time, in the {TBILL.label} at {pct(TBILL.rate)} p.a. ({TBILL.source}).{early ? " The buyer paid before the due date (a live network's clock can't be fast-forwarded), so held-to-maturity returns are measured over the scheduled tenor. Positions held for under a day show no annualised figure." : ""}</p>
         </div>
         <div className="table-wrap">
           <table className="grid">
-            <thead><tr><th>Investor</th><th>Route</th><th className="r">Paid in</th><th className="r">Received</th><th className="r">Profit</th><th className="r">Annualised</th><th className="r">Same cash in T-bills</th></tr></thead>
+            <thead><tr><th>Investor</th><th>What happened</th><th className="r">Paid in</th><th className="r">From DDEx sale</th><th className="r">Paid at maturity</th><th className="r">Profit</th><th className="r">Annualised</th><th className="r">Same cash in T-bills</th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.k}>
                   <td><strong>{ACTORS[r.k]?.name || r.k}</strong></td>
-                  <td>{r.sold ? (r.days >= 1 ? `Sold on DDEx after ~${r.days} days` : "Sold on DDEx before maturity") : trades.some((t) => t.buyer === r.k) ? "Primary + bought on DDEx, held to maturity" : "Held to maturity"}</td>
+                  <td className="story">{story(r)}</td>
                   <td className="r">{sgd(r.paidIn)}</td>
-                  <td className="r">{sgd(r.back)}</td>
-                  <td className="r good-t">{sgd(r.profit, { sign: true })}</td>
+                  <td className="r">{r.soldProceeds ? sgd(r.soldProceeds) : "—"}</td>
+                  <td className="r">{r.maturityPayout ? sgd(r.maturityPayout) : "—"}</td>
+                  <td className={`r ${r.profit >= 0 ? "good-t" : "bad-t"}`}>{sgd(r.profit, { sign: true })}</td>
                   <td className="r"><strong>{r.ann === null ? "—" : pct(r.ann, 2)}</strong></td>
                   <td className="r">{sgd(Math.round(r.tbillEarn), { sign: true })}</td>
                 </tr>
@@ -104,7 +103,7 @@ export default function ResultsView({ snap, ledger, client }) {
           </li>
           {trades.length ? (
             <li>
-              <strong>Paid to whoever held the tokens on the due date.</strong> Ng & Toh sold on DDEx, so its share went to Lim & Pang. No one had to update a register by hand.
+              <strong>Paid to whoever held the tokens on the due date.</strong> Tokens Ng & Toh sold on DDEx were paid out to Lim & Pang, the holder on the due date. No one had to update a register by hand.
             </li>
           ) : null}
           <li>

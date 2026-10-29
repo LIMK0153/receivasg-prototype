@@ -12,7 +12,8 @@
     "deploy:amoy": "hardhat run scripts/deploy.js --network amoy",
     "e2e": "node e2e/sandbox.cjs && node e2e/manual.cjs",
     "e2e:wallet": "node e2e/wallet.cjs",
-    "serve": "node -e \"require('http').createServer((q,r)=>{r.writeHead(200,{'content-type':'text/html'});r.end(require('fs').readFileSync('dist/receivasg-prototype.html'))}).listen(5173,()=>console.log('Prototype at http://localhost:5173'))\""
+    "serve": "node -e \"require('http').createServer((q,r)=>{r.writeHead(200,{'content-type':'text/html'});r.end(require('fs').readFileSync('dist/receivasg-prototype.html'))}).listen(5173,()=>console.log('Prototype at http://localhost:5173'))\"",
+    "test:results": "node e2e/results-cases.mjs"
   },
   "author": "",
   "license": "MIT",

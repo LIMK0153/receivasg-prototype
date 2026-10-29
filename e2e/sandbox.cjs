@@ -76,17 +76,22 @@ const server = http.createServer((q, r) => { r.writeHead(200, { "content-type": 
   await switchTo("Ng & Toh"); await nav("DDEx market"); await cueIs("#btn-list");
   await page.locator("#btn-list").scrollIntoViewIfNeeded(); await shot("05b-sell-form");
   console.log("   sell form:", (await page.locator(".howprice").innerText()).replace(/\s+/g, " ").slice(0, 330));
+  if (process.env.PARTIAL_SALE) await page.fill("#list-amt", process.env.PARTIAL_SALE);
   await page.click("#btn-list"); await toast("Ng & Toh lists on DDEx");
   await switchTo("Unverified"); await nav("DDEx market"); await shot("06-ddex");
   await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("Unverified tries to buy");
   await switchTo("Lim & Pang"); await nav("DDEx market");
   await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("Lim & Pang buys");
+  if (process.env.PARTIAL_SALE) {
+    await switchTo("Ng & Toh"); await nav("Portfolio");
+    console.log("   Ng & Toh portfolio after the sale:", (await page.locator("table.grid tr", { hasText: "RSN-4" }).first().innerText()).replace(/\s+/g, " "));
+  }
   await tools("due date"); await toast("Fast-forward to due date");
   await switchTo("Straits Marine"); await cueIs("#btn-repay-4"); await shot("07-buyer");
   await page.click("#btn-repay-4"); await toast("Straits Marine pays");
   await page.click("#nav-results"); await page.waitForTimeout(200);
   await page.screenshot({ path: path.join(OUT, "08-results.png"), fullPage: true });
-  console.log((await page.locator(".main").innerText()).split("\n").filter((l) => /Held to maturity|Sold on DDEx|bought on DDEx|Received from|block #/.test(l)).join("\n"));
+  console.log((await page.locator(".main").innerText()).split("\n").filter((l) => /Invested|block #/.test(l)).join("\n"));
   console.log("checklist:", (await page.locator(".guide-text strong").innerText().catch(() => "hidden")));
 
   await switchTo("Lim & Pang"); await nav("Portfolio"); await shot("09b-portfolio");

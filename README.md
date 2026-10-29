@@ -65,6 +65,8 @@ You click every step yourself. Switch accounts with the account menu (top right)
 12. **Straits Marine pays S$100,000.** One transaction pays the 0.10% fee and the current holder (Lim & Pang), then retires the tokens.
 13. **Results:** the SME was paid 90 days early for 2%. Ng & Toh earned about 8.3% p.a. over 30 days and Lim & Pang about 7.8% p.a., vs 1.92% for T-bills. The SPV holds S$0: nothing sat in escrow.
 
+**Partial sales:** in step 8 you can type a smaller number in *Tokens to sell* (e.g. 25000). Ng & Toh then gets the DDEx sale proceeds now and the maturity payout on the tokens it kept; the Results page shows both columns, and its portfolio shows what it paid for the tokens it still holds. `npm run test:results` checks the results maths across seven cases (no sale, full sale, partial sale, counter-offer + partial sale, same-day sale, two trades, a loss).
+
 **For Q&A:** Ops → Identity registry → *Complete KYC* on the unverified wallet, then show it can now buy. Ops → Grades and pricing shows where the 85% floor bites. Explorer → Invoice NFTs shows the on-chain metadata. **Demo tools → Reset demo** starts a fresh chain.
 
 ---

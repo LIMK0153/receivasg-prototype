@@ -157,6 +157,49 @@ export function payoutFor(notes, feeBps = SERVICING_FEE_BPS) {
   return Math.floor(notes * (1 - feeBps / 10000));
 }
 
+/**
+ * Per-investor results for one invoice, from its actual cash flows.
+ *   commitments: [{ investor, cash, notes }]      primary subscription (day 0 = fundedAt)
+ *   trades:      [{ seller, buyer, amount, price, filledAt }]   filled DDEx trades
+ *   dists:       [{ holder, amount, notes }]      maturity payouts (at maturityTs)
+ * Annualised return uses capital-days: each payment in counts from when it was paid until
+ * the investor's last cash flow, and money received back early (a DDEx sale) stops counting
+ * from the day it came back.
+ */
+export function investorResults({ commitments, trades, dists, fundedAt, maturityTs, tbillRate = TBILL.rate }) {
+  const rows = {};
+  const row = (k) => (rows[k] ||= { k, invested: 0, primaryTokens: 0, boughtCost: 0, boughtTokens: 0, soldProceeds: 0, soldTokens: 0, maturityPayout: 0, maturityTokens: 0, flows: [], sales: [], buys: [] });
+  for (const c of commitments) {
+    const r = row(c.investor);
+    r.invested += c.cash; r.primaryTokens += c.notes;
+    r.flows.push([-c.cash, fundedAt]);
+  }
+  for (const t of trades) {
+    const b = row(t.buyer), s = row(t.seller);
+    b.boughtCost += t.price; b.boughtTokens += t.amount; b.flows.push([-t.price, t.filledAt]); b.buys.push(t);
+    s.soldProceeds += t.price; s.soldTokens += t.amount; s.flows.push([t.price, t.filledAt]); s.sales.push(t);
+  }
+  for (const d of dists) {
+    const r = row(d.holder);
+    r.maturityPayout += d.amount; r.maturityTokens += d.notes;
+    r.flows.push([d.amount, maturityTs]);
+  }
+  return Object.values(rows).map((r) => {
+    const paidIn = r.invested + r.boughtCost;
+    const received = r.soldProceeds + r.maturityPayout;
+    const end = Math.max(...r.flows.map(([, t]) => t));
+    // payments in count until `end`; money back before `end` stops counting when it arrives
+    const capitalDays = r.flows.reduce((s, [a, t]) => s - a * ((end - t) / DAY), 0);
+    const avgDays = paidIn ? capitalDays / paidIn : 0;
+    const profit = received - paidIn;
+    const ann = capitalDays > 0 && avgDays >= 1 ? (profit / capitalDays) * 365 * 100 : null;
+    const tbillEarn = capitalDays > 0 ? (capitalDays / 365) * (tbillRate / 100) : 0;
+    const firstSaleDays = r.sales.length ? Math.round((Math.min(...r.sales.map((t) => t.filledAt)) - fundedAt) / DAY) : null;
+    const soldAll = r.soldTokens > 0 && r.maturityTokens === 0;
+    return { ...r, paidIn, received, profit, capitalDays, ann, tbillEarn, firstSaleDays, soldAll };
+  }).sort((a, b) => b.paidIn - a.paidIn);
+}
+
 export const tbill = TBILL;
 export const actorName = (k) => ACTORS[k]?.name || (typeof k === "string" ? `${k.slice(0, 6)}…${k.slice(-4)}` : "");
 export const actorShort = (k) => ACTORS[k]?.short || actorName(k);
