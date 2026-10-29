@@ -97,24 +97,24 @@ export default function ResultsView({ snap, ledger, client }) {
         <div className="panel-head"><h2>What the contracts did</h2></div>
         <ul className="proof">
           <li>
-            <strong>One transaction to fund the SME.</strong> Both investors' cash, their note mints and the {sgd(m.price)} payment to Meridian all happened in block #{settle?.block}. <Hash value={settle?.hash} />
+            <strong>One transaction to fund the SME.</strong> Both investors' cash, their token mints and the {sgd(m.price)} payment to Meridian all happened in block #{settle?.block}. <Hash value={settle?.hash} />
           </li>
           <li>
-            <strong>One transaction to pay everyone at maturity.</strong> Straits Marine's {sgd(m.face)} {dists.length === 1 ? `went to the note holder on the due date, ${actorShort(client.actorOf(dists[0].args.holder))},` : `was split pro rata across ${dists.length} note holders`} and {sgd(fee)} went to ReceivaSG as the servicing fee, in block #{paid?.block}. <Hash value={paid?.hash} />
+            <strong>One transaction to pay everyone at maturity.</strong> Straits Marine's {sgd(m.face)} {dists.length === 1 ? `went to the token holder on the due date, ${actorShort(client.actorOf(dists[0].args.holder))},` : `was split pro rata across ${dists.length} token holders`} and {sgd(fee)} went to ReceivaSG as the servicing fee, in block #{paid?.block}. <Hash value={paid?.hash} />
           </li>
           {trades.length ? (
             <li>
-              <strong>Paid to whoever held the notes on the due date.</strong> Lion Gate sold on DDEx, so its share went to Lim & Pang. No one had to update a register by hand.
+              <strong>Paid to whoever held the tokens on the due date.</strong> Lion Gate sold on DDEx, so its share went to Lim & Pang. No one had to update a register by hand.
             </li>
           ) : null}
           <li>
             <strong>No cash parked in between.</strong> The SPV's tSGD balance is {sgd(snap.spvCash)}: investors' cash stayed in their own wallets until settlement, and nothing sat in escrow.
           </li>
           <li>
-            <strong>Capital back in half the time.</strong> These notes matured {Math.round((m.dueDate - m.fundedAt) / DAY)} days after funding; a {TBILL.label} ties cash up for about {TBILL.tenorDays} days.
+            <strong>Capital back in half the time.</strong> These tokens matured {Math.round((m.dueDate - m.fundedAt) / DAY)} days after funding; a {TBILL.label} ties cash up for about {TBILL.tenorDays} days.
           </li>
           <li>
-            <strong>Compliance enforced by the token itself.</strong> The unverified wallet's purchase reverted inside the note contract, so no ERC-3643 note ever reached a wallet without KYC.
+            <strong>Compliance enforced by the token itself.</strong> The unverified wallet's purchase reverted inside the token contract, so no ERC-3643 token ever reached a wallet without KYC.
           </li>
         </ul>
       </section>

@@ -1,6 +1,6 @@
 # ReceivaSG prototype
 
-A working prototype of **ReceivaSG**, the tokenised invoice financing platform described in our submitted press release (BF3214 Digital Assets, group project). A Singapore SME sells a buyer-approved InvoiceNow invoice to a bankruptcy-remote SPV. The SPV issues permissioned ERC-3643-style notes to accredited and institutional investors, who fund it in fractions. The SME is paid in one atomic settlement, and when the buyer pays at maturity a smart contract distributes the proceeds pro rata to whoever holds the notes.
+A working prototype of **ReceivaSG**, the tokenised invoice financing platform described in our submitted press release (BF3214 Digital Assets, group project). A Singapore SME sells a buyer-approved InvoiceNow invoice to a bankruptcy-remote SPV. The SPV issues permissioned ERC-3643-style tokens to accredited and institutional investors, who fund it in fractions; each token pays S$1 when the buyer pays. The SME is paid in one atomic settlement, and when the buyer pays at maturity a smart contract distributes the proceeds pro rata to whoever holds the tokens.
 
 **Live demo:** https://limk0153.github.io/receivasg-prototype/
 
@@ -20,9 +20,9 @@ A working prototype of **ReceivaSG**, the tokenised invoice financing platform d
 
 | Contract | Role in the press release |
 |---|---|
-| `ReceivaSPV.sol` | The Singapore-domiciled SPV. Accepts InvoiceNow-approved invoices, records the grade AAA–CCC, prices them (never below the **85% minimum financing percentage**), handles SME counter-offers, takes the true sale, runs pooled funding, settles atomically, distributes at maturity, handles defaults |
+| `ReceivaSPV.sol` | The Singapore-domiciled SPV. Accepts InvoiceNow-approved invoices, records one of nine grades AAA–C, prices them (never below the **85% minimum financing percentage**), handles SME counter-offers, takes the true sale, runs pooled funding, settles atomically, distributes at maturity, handles defaults |
 | `InvoiceNFT.sol` (ERC-721) | The unique on-chain reference to each validated receivable. Minted to the SPV and non-transferable. Stores only the e-invoice hash and status; documents stay off-chain |
-| `ReceivableNote.sol` (ERC-3643-style) | Fractional receivables-backed notes issued by the SPV, one series per invoice (EIP-1167 clones). Every transfer checks the identity registry; non-compliant transfers fail inside the contract. Agent controls: pause, freeze, forced recovery transfer |
+| `ReceivableNote.sol` (ERC-3643-style) | Fractional receivables-backed tokens issued by the SPV, one series per invoice (EIP-1167 clones). Every transfer checks the identity registry; non-compliant transfers fail inside the contract. Agent controls: pause, freeze, forced recovery transfer |
 | `IdentityRegistry.sol` | KYC/AML registry. Stores category and expiry plus a hash of the KYC file, never personal data |
 | `TokenisedSGD.sol` | Simulated tokenised commercial bank deposit used for every cash leg |
 | `DDExMarket.sol` | Simulated stand-in for the DBS Digital Exchange: secondary trading with atomic delivery-versus-payment |
@@ -33,15 +33,15 @@ A working prototype of **ReceivaSG**, the tokenised invoice financing platform d
 |---|---|
 | Buyer approval arrives via InvoiceNow (Peppol); ReceivaSG verifies supplier, buyer, amount, due date | Ops → Verification queue: the InvoiceNow checks, plus the e-invoice hash recorded on-chain |
 | Sold outright to the SPV, which records the assignment and gives notice to the buyer | `acceptOffer()` mints the Invoice NFT to the SPV and emits `NoticeOfAssignment`; the buyer's Payables screen shows the notice |
-| ERC-721 Invoice NFT + fractional ERC-3643 notes issued by the SPV | `InvoiceNFT` + `ReceivableNote` clone per invoice |
-| AAA–CCC grading: AAA needs a bigger minimum investment and pays less, CCC needs less and pays more | `discountBpsPer90d` and `minTicket` per grade in `ReceivaSPV`; Ops → Grades and pricing. A S$100,000, 90-day invoice prices at S$98,000 for A and S$85,000 for CCC |
+| ERC-721 Invoice NFT + fractional ERC-3643 tokens issued by the SPV | `InvoiceNFT` + `ReceivableNote` clone per invoice |
+| Grading AAA, AA, A, BBB, BB, B, CCC, CC, C: higher grades need a bigger minimum investment and pay less | `discountBpsPer90d` and `minTicket` per grade in `ReceivaSPV`; Ops → Grades and pricing. A S$100,000, 90-day invoice prices at S$98,750 / 98,400 / 98,000 / 97,000 / 95,500 / 93,500 / 90,000 / 87,500 / 85,000 from AAA down to C, with the biggest step between B and CCC |
 | SME can counter-offer instead of only accepting or declining | `counterOffer()` / `reviewCounter()`: the SME may ask for up to the price one grade better would earn; ReceivaSG approves (the counter becomes the price) or rejects (the original offer stands). AAA has no room to counter |
 | S$100,000 invoice, 90 days → financed at S$98,000 → investors collectively provide S$98,000 → buyer pays S$100,000 → smart contract distributes pro rata | The presenter checklist walks through exactly this. Grade A = 2.00% per 90 days |
-| 85% minimum financing percentage | `MIN_FINANCING_BPS = 8500`; shaded cells in the pricing grid; the seeded CCC 240-day invoice is floored at S$34,000 on S$40,000 |
-| Atomic settlement (T+0 DvP) with tokenised deposits, no settlement window, no escrow float | Investors' cash stays in their wallets; the commitment that fills the invoice pulls every investor's cash, mints every note and pays the SME **in one transaction**. If any leg fails, everything reverts |
+| 85% minimum financing percentage | `MIN_FINANCING_BPS = 8500`; shaded cells in the pricing grid; the seeded CC 240-day invoice is floored at S$34,000 on S$40,000 |
+| Atomic settlement (T+0 DvP) with tokenised deposits, no settlement window, no escrow float | Investors' cash stays in their wallets; the commitment that fills the invoice pulls every investor's cash, mints every token and pays the SME **in one transaction**. If any leg fails, everything reverts |
 | Double-pledging detected within the network | `DuplicateInvoice` revert on a reused e-invoice hash ("Submit again" button) |
 | DDEx listing for price discovery and exit before maturity | DDEx secondary market tab |
-| Returns vs the 1.92% 6-month T-bill (MAS, 29 Sep 2026); capital back in half the time | Results page: held to maturity a grade-A note earns **7.86% p.a.** net of the 0.10% servicing fee; Lion Gate earns about 8.3% p.a. selling after 30 days |
+| Returns vs the 1.92% 6-month T-bill (MAS, 29 Sep 2026); capital back in half the time | Results page: held to maturity a grade-A token earns **7.86% p.a.** net of the 0.10% servicing fee; Lion Gate earns about 8.3% p.a. selling after 30 days |
 | SME: outright sale, no financing interest to repay | SME offer card and Results |
 | ReceivaSG earns fees, not token speculation | 0.10% servicing fee to the treasury at maturity |
 
@@ -52,17 +52,17 @@ A working prototype of **ReceivaSG**, the tokenised invoice financing platform d
 You click every step yourself. Switch accounts with the account menu (top right); the checklist's **Switch to …** button does the same thing. The button to press next has a pulsing yellow outline. **Demo tools** (header) moves the chain clock forward, hides the checklist or activity panel, and resets the demo.
 
 1. **Meridian requests financing.** InvoiceNow inbox: three e-invoices synced from accounting, each labelled with its buyer. One shows a buyer query and can't be submitted. *Only buyer-approved invoices qualify.*
-2. **ReceivaSG verifies and grades.** Six InvoiceNow checks plus the credit scorecard for Straits Marine (score 82.5 → A). The contract sets the price: S$98,000. *Grading is off-chain; pricing is on-chain and auditable.* (Click CCC on the grade picker to show it would price at S$85,000, then back to A.)
+2. **ReceivaSG verifies and grades.** Six InvoiceNow checks plus the credit scorecard for Straits Marine (score 82.5 → A). The contract sets the price: S$98,000. *Grading is off-chain; pricing is on-chain and auditable.* (Click C on the grade picker to show the lowest grade would price at S$85,000, then back to A.)
 3. **Optional: Meridian counter-offers.** Click Counter-offer and ask for more, up to the AA price (S$98,400). Switch to ReceivaSG Ops: the review card shows investors' return at the counter vs the original offer and the T-bill. Approve or reject. Click **Skip this step** in the checklist to keep the press-release numbers.
-4. **Meridian accepts.** True sale to the SPV: the Invoice NFT is minted, notice of assignment goes to the buyer, note series RSN-4 is created. Point at the blockchain activity panel.
+4. **Meridian accepts.** True sale to the SPV: the Invoice NFT is minted, notice of assignment goes to the buyer, token series RSN-4 is created. Point at the blockchain activity panel.
 5. **Lion Gate commits S$50,000.** Show that its wallet balance does not drop. *No escrow.*
-6. **Lim & Pang Capital commits the remaining S$48,000** (Fill remaining). The highlighted "atomic settlement" entry: both cash legs, both note mints and S$98,000 to Meridian, all in one block.
+6. **Lim & Pang Capital commits the remaining S$48,000** (Fill remaining). The highlighted "atomic settlement" entry: both cash legs, both token mints and S$98,000 to Meridian, all in one block.
 7. **30 days pass:** Demo tools → +30 days.
-8. **Lion Gate lists all its notes on DDEx** (DBS Digital Exchange) at the suggested S$50,340: it doesn't hold to maturity.
-9. **An unverified wallet tries to buy.** It holds S$50,000, but the note contract blocks it. *Compliance lives in the token, not in a back office.*
-10. **Lim & Pang buys** Lion Gate's notes in one DvP transaction and now holds the whole invoice.
+8. **Lion Gate sells all its tokens on DDEx** (DBS Digital Exchange) at the suggested S$50,340: it doesn't hold to maturity. The sell form shows what Lion Gate paid (S$50,000), what the tokens pay at maturity (S$50,969.37), and how the suggested price is worked out: tokens issued at S$0.98 rise evenly to S$1.00 over 90 days, so after 30 days each is priced at S$0.9867. The seller can ask more or less; DDEx buyers decide.
+9. **An unverified wallet tries to buy.** It holds S$50,000, but the token contract blocks it. *Compliance lives in the token, not in a back office.*
+10. **Lim & Pang buys** Lion Gate's tokens in one DvP transaction and now holds the whole invoice.
 11. **Move to the due date:** Demo tools → To INV-2026-0412 due date.
-12. **Straits Marine pays S$100,000.** One transaction pays the 0.10% fee and the current holder (Lim & Pang), then retires the notes.
+12. **Straits Marine pays S$100,000.** One transaction pays the 0.10% fee and the current holder (Lim & Pang), then retires the tokens.
 13. **Results:** the SME was paid 90 days early for 2%. Lion Gate earned about 8.3% p.a. over 30 days and Lim & Pang about 7.8% p.a., vs 1.92% for T-bills. The SPV holds S$0: nothing sat in escrow.
 
 **For Q&A:** Ops → Identity registry → *Complete KYC* on the unverified wallet, then show it can now buy. Ops → Grades and pricing shows where the 85% floor bites. Explorer → Invoice NFTs shows the on-chain metadata. **Demo tools → Reset demo** starts a fresh chain.

@@ -73,7 +73,10 @@ const server = http.createServer((q, r) => { r.writeHead(200, { "content-type": 
   await shot("05-settled");
 
   await cueIs("#btn-demo-tools"); await tools("+30 days"); await toast("+30 days");
-  await switchTo("Lion Gate"); await nav("DDEx market"); await cueIs("#btn-list"); await page.click("#btn-list"); await toast("Lion Gate lists on DDEx");
+  await switchTo("Lion Gate"); await nav("DDEx market"); await cueIs("#btn-list");
+  await page.locator("#btn-list").scrollIntoViewIfNeeded(); await shot("05b-sell-form");
+  console.log("   sell form:", (await page.locator(".howprice").innerText()).replace(/\s+/g, " ").slice(0, 330));
+  await page.click("#btn-list"); await toast("Lion Gate lists on DDEx");
   await switchTo("Unverified"); await nav("DDEx market"); await shot("06-ddex");
   await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("Unverified tries to buy");
   await switchTo("Lim & Pang"); await nav("DDEx market");
@@ -86,6 +89,9 @@ const server = http.createServer((q, r) => { r.writeHead(200, { "content-type": 
   console.log((await page.locator(".main").innerText()).split("\n").filter((l) => /Held to maturity|Sold on DDEx|bought on DDEx|Received from|block #/.test(l)).join("\n"));
   console.log("checklist:", (await page.locator(".guide-text strong").innerText().catch(() => "hidden")));
 
+  await switchTo("Lim & Pang"); await nav("Portfolio"); await shot("09b-portfolio");
+  await switchTo("ReceivaSG Ops"); await nav("Grades & pricing"); await shot("09c-pricing");
+  console.log("   pricing grid:", (await page.locator("table.grid").innerText()).split("\n").filter((l) => /^(AAA|AA|A|BBB|BB|B|CCC|CC|C)\t/.test(l)).map((l) => l.split("\t").slice(0, 2).join(" ")).join(" | "));
   // duplicate e-invoice
   await switchTo("Meridian"); await page.getByRole("button", { name: "Submit again" }).first().click(); await toast("Duplicate submit");
 

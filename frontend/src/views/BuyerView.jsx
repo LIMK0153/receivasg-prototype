@@ -47,7 +47,7 @@ export default function BuyerView({ persona, snap, actions, run, busy, ledger, c
                   ) : <p className="fin-msg">Your supplier has asked ReceivaSG to finance this invoice. Nothing changes for you until it is sold.</p>}
                   {inv.status === 4 ? (
                     <div className="row-actions">
-                      <Button id={`btn-repay-${inv.id}`} busy={busy[`repay-${inv.id}`]} onClick={() => run(`repay-${inv.id}`, () => actions.repay(persona, inv), `Paid ${sgd(inv.face)}. The contract paid every note holder in the same transaction.`)}>
+                      <Button id={`btn-repay-${inv.id}`} busy={busy[`repay-${inv.id}`]} onClick={() => run(`repay-${inv.id}`, () => actions.repay(persona, inv), `Paid ${sgd(inv.face)}. The contract paid every token holder in the same transaction.`)}>
                         Pay {sgd(inv.face)} to the SPV
                       </Button>
                     </div>

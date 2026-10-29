@@ -134,6 +134,25 @@ export function fairValue(inv, notes, nowTs) {
   return Math.round(notes * (p + (1 - p) * (elapsed / total)));
 }
 
+/** What `who` paid for the tokens it holds now: primary subscription plus DDEx purchases,
+ *  at their average cost per token. Returns null when there is no purchase record (e.g. a transfer). */
+export function costBasis(snap, inv, who) {
+  const bal = inv.holders.find((h) => h.who === who)?.bal || 0;
+  if (!bal) return 0;
+  let cash = 0;
+  let tokens = 0;
+  const c = inv.status >= 4 ? inv.commitments.find((x) => x.investor === who) : null;
+  if (c) { cash += c.cash; tokens += c.notes; }
+  for (const l of snap.listings) {
+    if (l.invoiceId === inv.id && l.buyer === who) { cash += l.price; tokens += l.amount; }
+  }
+  if (!tokens) return null;
+  return Math.round((cash / tokens) * bal);
+}
+
+/** Token count for display: 1 token = S$1 of face value, 2 decimals. */
+export const tokens = (units) => `${(units / 100).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} tokens`;
+
 export function payoutFor(notes, feeBps = SERVICING_FEE_BPS) {
   return Math.floor(notes * (1 - feeBps / 10000));
 }

@@ -193,12 +193,19 @@ describe("ReceivaSG prototype", function () {
       .to.be.revertedWithCustomError(c.spv, "DuplicateInvoice").withArgs(id);
   });
 
-  it("prices CCC at 85% of face for 90 days, and never below the 85% minimum", async () => {
-    const [p90] = await c.spv.quote(S(100_000), 6, 90 * DAY);
-    expect(p90).to.equal(S(85_000));
-    const [p30] = await c.spv.quote(S(100_000), 6, 30 * DAY);
+  it("prices all nine grades for S$100,000 over 90 days, lowest (C) at S$85,000", async () => {
+    const expected = [98_750, 98_400, 98_000, 97_000, 95_500, 93_500, 90_000, 87_500, 85_000]; // AAA … C
+    for (let g = 0; g < 9; g++) {
+      const [p] = await c.spv.quote(S(100_000), g, 90 * DAY);
+      expect(p).to.equal(S(expected[g]));
+    }
+    await expect(c.spv.quote(S(100_000), 9, 90 * DAY)).to.be.revertedWithCustomError(c.spv, "InvalidGrade");
+  });
+
+  it("never prices below the 85% minimum financing percentage", async () => {
+    const [p30] = await c.spv.quote(S(100_000), 8, 30 * DAY);
     expect(p30).to.equal(S(95_000));
-    const [p240, floored] = await c.spv.quote(S(40_000), 6, 240 * DAY);
+    const [p240, floored] = await c.spv.quote(S(40_000), 7, 240 * DAY);
     expect(p240).to.equal(S(34_000));
     expect(floored).to.equal(true);
   });
@@ -288,12 +295,12 @@ describe("ReceivaSG prototype", function () {
     });
 
     it("a CCC invoice can be countered up to the B price", async () => {
-      const id = await offered(6); // CCC → S$85,000
+      const id = await offered(6); // CCC → S$90,000
       const [, max] = await c.spv.counterOfferRange(id);
-      expect(max).to.equal(S(95_000)); // B: 5% per 90 days
-      await c.spv.connect(a.sme).counterOffer(id, S(90_000));
+      expect(max).to.equal(S(93_500)); // B: 6.5% per 90 days
+      await c.spv.connect(a.sme).counterOffer(id, S(92_000));
       await c.spv.connect(a.admin).reviewCounter(id, true);
-      expect((await c.spv.getInvoice(id)).price).to.equal(S(90_000));
+      expect((await c.spv.getInvoice(id)).price).to.equal(S(92_000));
     });
 
     it("AAA invoices have no room to counter", async () => {

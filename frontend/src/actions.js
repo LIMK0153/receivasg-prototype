@@ -2,6 +2,7 @@
 import { ethers } from "ethers";
 import { ACTORS, DAY } from "../../shared/constants.mjs";
 
+const tok = (u) => (u / 100).toLocaleString("en-SG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmt = (c) => `S$${(c / 100).toLocaleString("en-SG", { minimumFractionDigits: c % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 
 export function makeActions(client) {
@@ -59,11 +60,11 @@ export function makeActions(client) {
       const note = client.note(inv.note);
       const allowed = await note.allowance(client.actors[actor], addresses.market);
       if (allowed < BigInt(amount)) {
-        await client.send(actor, `${ACTORS[actor].short}: approve DDEx to transfer ${inv.noteSymbol} notes`, (s) =>
+        await client.send(actor, `${ACTORS[actor].short}: approve DDEx to transfer ${inv.noteSymbol} tokens`, (s) =>
           note.connect(s).approve(addresses.market, BigInt(amount))
         );
       }
-      return client.send(actor, `${ACTORS[actor].short}: list ${fmt(amount)} face of ${inv.noteSymbol} on DDEx at ${fmt(price)}`, (s) =>
+      return client.send(actor, `${ACTORS[actor].short}: list ${tok(amount)} ${inv.noteSymbol} tokens on DDEx at ${fmt(price)}`, (s) =>
         read.market.connect(s).list(inv.id, BigInt(amount), BigInt(price))
       );
     },
@@ -78,13 +79,13 @@ export function makeActions(client) {
           read.tsgd.connect(s).approve(addresses.market, BigInt(listing.price))
         );
       }
-      return client.send(actor, `${ACTORS[actor].short}: buy ${fmt(listing.amount)} face of ${symbol} on DDEx`, (s) =>
+      return client.send(actor, `${ACTORS[actor].short}: buy ${tok(listing.amount)} ${symbol} tokens on DDEx`, (s) =>
         read.market.connect(s).buy(listing.id)
       );
     },
 
     transferNotes: (actor, inv, toKey, amount) =>
-      client.send(actor, `${ACTORS[actor].short}: transfer ${inv.noteSymbol} notes to ${ACTORS[toKey]?.short || toKey}`, (s) =>
+      client.send(actor, `${ACTORS[actor].short}: transfer ${inv.noteSymbol} tokens to ${ACTORS[toKey]?.short || toKey}`, (s) =>
         client.note(inv.note).connect(s).transfer(client.actors[toKey], BigInt(amount))
       ),
 

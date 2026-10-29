@@ -8,8 +8,8 @@ import { EventList } from "../activity.jsx";
 const CONTRACTS = [
   ["spv", "ReceivaSPV", "Bankruptcy-remote SPV: buys invoices, prices them by grade, runs funding, settlement and payouts."],
   ["nft", "InvoiceNFT (ERC-721)", "One non-transferable token per validated receivable, held by the SPV. Stores the e-invoice hash and status."],
-  ["noteImpl", "ReceivableNote (ERC-3643-style)", "Template for the permissioned note series. One clone is deployed per invoice."],
-  ["registry", "IdentityRegistry", "KYC/AML registry. Every note transfer checks it before executing."],
+  ["noteImpl", "ReceivableNote (ERC-3643 token)", "Template for the permissioned token series. One clone is deployed per invoice."],
+  ["registry", "IdentityRegistry", "KYC/AML registry. Every token transfer checks it before executing."],
   ["tsgd", "TokenisedSGD", "Simulated tokenised SGD bank deposit used for every cash leg."],
   ["market", "DDExMarket", "Simulated DDEx venue for secondary trading, with atomic DvP."],
 ];

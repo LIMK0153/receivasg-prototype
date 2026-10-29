@@ -17,7 +17,7 @@ import "./ReceivableNote.sol";
 /// @notice Runs the full ReceivaSG lifecycle on-chain:
 ///   1. SME submits an InvoiceNow-approved invoice (hash of the Peppol e-invoice).
 ///   2. ReceivaSG (VERIFIER_ROLE, acting as the Peppol Access Point + credit engine)
-///      verifies it and assigns a grade AAA–CCC; the contract prices it from the grade
+///      verifies it and assigns a grade AAA–C; the contract prices it from the grade
 ///      and tenor, never below the 85% minimum financing percentage.
 ///   3. SME accepts the offer → true sale: Invoice NFT minted to the SPV, notice of
 ///      assignment emitted for the buyer, and an ERC-3643-style note series created.
@@ -48,7 +48,7 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
         uint64 dueDate;
         uint64 fundedAt;
         uint64 closedAt;
-        uint8 grade;            // 0 AAA, 1 AA, 2 A, 3 BBB, 4 BB, 5 B, 6 CCC
+        uint8 grade;            // 0 AAA, 1 AA, 2 A, 3 BBB, 4 BB, 5 B, 6 CCC, 7 CC, 8 C
         bool floorApplied;
         Status status;
         address note;
@@ -64,15 +64,16 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
     }
 
     // ── parameters ────────────────────────────────────────────────────
+    uint8 public constant MAX_GRADE = 8; // C
     uint256 public constant MIN_FINANCING_BPS = 8500; // SME always receives >= 85% of face
     uint256 public constant MAX_COMMITMENTS = 40;
     uint64 public constant MIN_TENOR = 7 days;
     uint64 public constant MAX_TENOR = 365 days;
 
     /// discount charged per 90 days of tenor, in basis points of face value, by grade
-    uint16[7] public discountBpsPer90d = [uint16(125), 160, 200, 275, 375, 500, 1500];
+    uint16[9] public discountBpsPer90d = [uint16(125), 160, 200, 300, 450, 650, 1000, 1250, 1500];
     /// minimum ticket per investor, in S$ cents, by grade (AAA has the highest entry barrier)
-    uint256[7] public minTicket = [uint256(25_000_00), 10_000_00, 5_000_00, 2_500_00, 1_000_00, 1_000_00, 1_000_00];
+    uint256[9] public minTicket = [uint256(25_000_00), 10_000_00, 5_000_00, 2_500_00, 1_000_00, 1_000_00, 1_000_00, 500_00, 500_00];
     uint16 public servicingFeeBps = 10; // 0.10% of face, taken at maturity
     uint64 public defaultGracePeriod = 30 days;
 
@@ -182,12 +183,12 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // 2. ReceivaSG verifies (InvoiceNow / Peppol data) and grades AAA–CCC
+    // 2. ReceivaSG verifies (InvoiceNow / Peppol data) and grades AAA–C
     // ══════════════════════════════════════════════════════════════════
     function verifyAndGrade(uint256 id, uint8 grade) external onlyRole(VERIFIER_ROLE) {
         Invoice storage inv = _invoices[id];
         if (inv.status != Status.Submitted) revert WrongStatus(inv.status);
-        if (grade > 6) revert InvalidGrade();
+        if (grade > MAX_GRADE) revert InvalidGrade();
         if (inv.dueDate < block.timestamp + MIN_TENOR) revert InvalidTenor();
 
         (uint256 price, bool floorApplied, ) = quote(inv.faceValue, grade, inv.dueDate - uint64(block.timestamp));
@@ -212,7 +213,7 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
         view
         returns (uint256 price, bool floorApplied, uint256 tenorDays)
     {
-        if (grade > 6) revert InvalidGrade();
+        if (grade > MAX_GRADE) revert InvalidGrade();
         tenorDays = (tenorSeconds + 1 days - 1) / 1 days; // round up to whole days
         uint256 discount = (faceValue * discountBpsPer90d[grade] * tenorDays) / (90 * 10_000);
         uint256 floorPrice = (faceValue * MIN_FINANCING_BPS) / 10_000;
@@ -483,7 +484,7 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
 
     // ── admin ─────────────────────────────────────────────────────────
     function setGradeParams(uint8 grade, uint16 bpsPer90d, uint256 ticket) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (grade > 6) revert InvalidGrade();
+        if (grade > MAX_GRADE) revert InvalidGrade();
         require(bpsPer90d <= 5_000, "rate too high");
         discountBpsPer90d[grade] = bpsPer90d;
         minTicket[grade] = ticket;
@@ -508,7 +509,7 @@ contract ReceivaSPV is AccessControl, ReentrancyGuard, IERC721Receiver {
         return _commitments[id];
     }
 
-    function gradeTable() external view returns (uint16[7] memory rates, uint256[7] memory tickets) {
+    function gradeTable() external view returns (uint16[9] memory rates, uint256[9] memory tickets) {
         return (discountBpsPer90d, minTicket);
     }
 

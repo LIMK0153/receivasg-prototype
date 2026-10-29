@@ -168,7 +168,7 @@ function Verify({ inv, snap, inbox, actions, run, busy }) {
                 </tbody>
                 <tfoot><tr><td colSpan={3}>Score (0–100)</td><td className="r"><strong>{cs.score}</strong></td></tr></tfoot>
               </table>
-              <p className="muted-s">Model grade: <GradeChip grade={model} /> Bands: AAA ≥ 93, AA ≥ 88, A ≥ 82, BBB ≥ 74, BB ≥ 66, B ≥ 58, else CCC.</p>
+              <p className="muted-s">Model grade: <GradeChip grade={model} /> Bands: AAA ≥ 93, AA ≥ 88, A ≥ 82, BBB ≥ 74, BB ≥ 66, B ≥ 58, CCC ≥ 50, CC ≥ 42, else C.</p>
             </>
           ) : <p className="muted-s">No credit data for this buyer.</p>}
           <div className="grade-pick" role="radiogroup" aria-label="Grade to assign">
@@ -240,7 +240,7 @@ function Kyc({ snap, actions, run, busy, client }) {
     <section className="panel">
       <div className="panel-head">
         <h2>Identity registry</h2>
-        <p>Every note transfer checks this registry first. Only a hash of each KYC/AML file is stored on-chain; the personal data stays off-chain with ReceivaSG.</p>
+        <p>Every token transfer checks this registry first. Only a hash of each KYC/AML file is stored on-chain; the personal data stays off-chain with ReceivaSG.</p>
       </div>
       <div className="table-wrap">
         <table className="grid">
@@ -258,7 +258,7 @@ function Kyc({ snap, actions, run, busy, client }) {
                   <td>{id?.verified ? <Hash value={id.hash} /> : "—"}</td>
                   <td className="r">
                     {k === "unverified" && !id?.verified ? (
-                      <Button small busy={busy["kyc-unverified"]} onClick={() => run("kyc-unverified", () => actions.registerInvestor("unverified", 3), "KYC complete. The wallet can now hold and trade notes.")}>Complete KYC</Button>
+                      <Button small busy={busy["kyc-unverified"]} onClick={() => run("kyc-unverified", () => actions.registerInvestor("unverified", 3), "KYC complete. The wallet can now hold and trade tokens.")}>Complete KYC</Button>
                     ) : k === "unverified" && id?.verified ? (
                       <Button small kind="ghost" busy={busy["kyc-revoke"]} onClick={() => run("kyc-revoke", () => actions.removeIdentity("unverified"), "KYC revoked.")}>Revoke</Button>
                     ) : null}

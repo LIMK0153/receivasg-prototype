@@ -110,7 +110,7 @@ export async function seedDemo({ ethers, contracts, signers, addresses, chainNow
   const id1 = await originate({ smeKey: "bgSme1", buyerKey: "bgBuyer1", ref: "KP-2026-1187", sgd: 250_000, days: 120, grade: 0, description: "Precision-machined valve assemblies" });
   await invest("investorB", id1, 150_000);
 
-  const id2 = await originate({ smeKey: "bgSme2", buyerKey: "bgBuyer3", ref: "TFF-2026-0342", sgd: 40_000, days: 240, grade: 6, description: "Chilled produce supply contract, Q4" });
+  const id2 = await originate({ smeKey: "bgSme2", buyerKey: "bgBuyer3", ref: "TFF-2026-0342", sgd: 40_000, days: 240, grade: 7, description: "Chilled produce supply contract, Q4" });
   await invest("investorA", id2, 5_000);
 
   const id3 = await originate({ smeKey: "bgSme1", buyerKey: "bgBuyer2", ref: "KP-2026-1203", sgd: 80_000, days: 120, grade: 3, description: "Structural steel brackets" });

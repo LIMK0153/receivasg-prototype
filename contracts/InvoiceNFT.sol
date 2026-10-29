@@ -20,7 +20,7 @@ contract InvoiceNFT is ERC721, Ownable {
         string invoiceRef; // supplier's invoice number
         uint256 faceValue; // S$ cents
         uint64 dueDate;
-        uint8 grade;       // 0 = AAA ... 6 = CCC
+        uint8 grade;       // 0 = AAA ... 8 = C
         uint8 status;      // mirrors ReceivaSPV.Status
         address note;      // ERC-3643 note issued against this receivable
     }

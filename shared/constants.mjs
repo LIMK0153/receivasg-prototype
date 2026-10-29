@@ -1,6 +1,6 @@
 // Shared constants used by the deploy script, tests and frontend.
 
-export const GRADES = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC"];
+export const GRADES = ["AAA", "AA", "A", "BBB", "BB", "B", "CCC", "CC", "C"];
 
 export const STATUS = ["None", "Submitted", "Offered", "Listed", "Funded", "Repaid", "Defaulted", "Cancelled"];
 
@@ -79,7 +79,7 @@ export function creditScore(c) {
 }
 
 export function gradeFromScore(score) {
-  const bands = [93, 88, 82, 74, 66, 58]; // AAA, AA, A, BBB, BB, B, else CCC
+  const bands = [93, 88, 82, 74, 66, 58, 50, 42]; // AAA, AA, A, BBB, BB, B, CCC, CC, else C
   for (let i = 0; i < bands.length; i++) if (score >= bands[i]) return i;
-  return 6;
+  return 8;
 }
