@@ -237,11 +237,26 @@ function TransferBox({ inv, persona, actions, run, busy, onDone }) {
 function Ddex({ persona, snap, actions, run, busy, setFlag }) {
   const listings = [...snap.listings].sort((a, b) => Number(b.active) - Number(a.active) || b.id - a.id);
   const held = snap.invoices.filter((i) => i.status === 4 && i.holders.some((h) => h.who === persona)).sort((a, b) => b.id - a.id);
+  const open = snap.listings.filter((l) => l.active && snap.invoices.find((i) => i.id === l.invoiceId)?.status === 4);
+  const onOffer = open.reduce((t, l) => t + l.amount, 0);
+  const lastTrade = [...snap.listings].filter((l) => l.buyer).sort((x, y) => y.filledAt - x.filledAt)[0];
   return (
-    <>
+    <div className="venue">
+      <div className="venue-bar">
+        <div className="venue-brand">
+          <span className="venue-mark">DDEx</span>
+          <span className="venue-sub">Digital exchange for tokenised assets · simulated venue in this prototype</span>
+        </div>
+        <dl className="venue-stats">
+          <div><dt>Open listings</dt><dd>{open.length}</dd></div>
+          <div><dt>Tokens on offer</dt><dd>{(onOffer / 100).toLocaleString("en-SG", { maximumFractionDigits: 0 })}</dd></div>
+          <div><dt>Last trade</dt><dd>{lastTrade ? sgd(lastTrade.price) : "—"}</dd></div>
+          <div><dt>Your cash (tSGD)</dt><dd>{sgd(snap.balances[persona])}</dd></div>
+        </dl>
+      </div>
       <section className="panel">
         <div className="panel-head">
-          <h2>DDEx secondary market</h2>
+          <h2>Order book</h2>
           <p>ReceivaSG tokens list on the DBS Digital Exchange so investors can exit before maturity. This prototype simulates the venue with a contract: cash and tokens swap in one transaction, and the token contract still checks the buyer's eligibility.</p>
         </div>
         {listings.length === 0 ? <Empty>No tokens listed yet.</Empty> : (
@@ -287,7 +302,7 @@ function Ddex({ persona, snap, actions, run, busy, setFlag }) {
         </div>
         {held.length === 0 ? <Empty>You have no funded tokens to sell.</Empty> : <ListForm held={held} persona={persona} snap={snap} actions={actions} run={run} busy={busy} />}
       </section>
-    </>
+    </div>
   );
 }
 

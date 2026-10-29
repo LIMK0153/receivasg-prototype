@@ -55,7 +55,7 @@ describe("ReceivaSG prototype", function () {
     return id;
   }
 
-  // Press-release flow: Lion Gate S$50,000 + Lim & Pang S$48,000 = S$98,000
+  // Press-release flow: Ng & Toh S$50,000 + Lim & Pang S$48,000 = S$98,000
   async function fundMain() {
     const id = await offered(2); // A
     await c.spv.connect(a.sme).acceptOffer(id);
@@ -161,7 +161,7 @@ describe("ReceivaSG prototype", function () {
       .to.be.revertedWithCustomError(c.spv, "NotEligibleInvestor");
   });
 
-  it("Lion Gate sells all its notes on DDEx to Lim & Pang, who is paid the full amount at maturity", async () => {
+  it("Ng & Toh sells all its notes on DDEx to Lim & Pang, who is paid the full amount at maturity", async () => {
     const id = await fundMain();
     const n = note((await c.spv.getInvoice(id)).note);
     const lot = await n.balanceOf(a.investorA.address);
@@ -220,7 +220,7 @@ describe("ReceivaSG prototype", function () {
     const id = await offered(2);
     await c.spv.connect(a.sme).acceptOffer(id);
     await invest(a.investorA, id, 50_000);
-    await c.tsgd.connect(a.investorA).approve(await c.spv.getAddress(), 0); // Lion Gate pulls approval
+    await c.tsgd.connect(a.investorA).approve(await c.spv.getAddress(), 0); // Ng & Toh pulls approval
     const smeBefore = await c.tsgd.balanceOf(a.sme.address);
     await expect(invest(a.investorB, id, 48_000)).to.be.revertedWithCustomError(c.spv, "SettlementFailed").withArgs(a.investorA.address);
     expect(await c.tsgd.balanceOf(a.sme.address)).to.equal(smeBefore);

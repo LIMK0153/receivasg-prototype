@@ -66,17 +66,17 @@ const server = http.createServer((q, r) => { r.writeHead(200, { "content-type": 
   await page.click("#btn-accept"); await toast("Meridian accepts the offer");
 
   const card = () => page.locator(".offer-card", { hasText: "INV-2026-0412" });
-  await switchTo("Lion Gate"); await cueIs("#amt-4");
-  await card().locator("input").fill("50000"); await card().locator("button.btn").click(); await toast("Lion Gate commits 50,000");
+  await switchTo("Ng & Toh"); await cueIs("#amt-4");
+  await card().locator("input").fill("50000"); await card().locator("button.btn").click(); await toast("Ng & Toh commits 50,000");
   await switchTo("Lim & Pang"); await cueIs("#fill-4"); await shot("04-market");
   await card().locator("button.chip", { hasText: "Fill remaining" }).click(); await card().locator("button.btn").click(); await toast("Lim & Pang fills the invoice");
   await shot("05-settled");
 
   await cueIs("#btn-demo-tools"); await tools("+30 days"); await toast("+30 days");
-  await switchTo("Lion Gate"); await nav("DDEx market"); await cueIs("#btn-list");
+  await switchTo("Ng & Toh"); await nav("DDEx market"); await cueIs("#btn-list");
   await page.locator("#btn-list").scrollIntoViewIfNeeded(); await shot("05b-sell-form");
   console.log("   sell form:", (await page.locator(".howprice").innerText()).replace(/\s+/g, " ").slice(0, 330));
-  await page.click("#btn-list"); await toast("Lion Gate lists on DDEx");
+  await page.click("#btn-list"); await toast("Ng & Toh lists on DDEx");
   await switchTo("Unverified"); await nav("DDEx market"); await shot("06-ddex");
   await page.locator("tr", { hasText: "RSN-4" }).locator("button", { hasText: "Buy" }).click(); await toast("Unverified tries to buy");
   await switchTo("Lim & Pang"); await nav("DDEx market");

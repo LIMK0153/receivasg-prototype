@@ -45,7 +45,7 @@ export const ACTORS = {
   treasury:   { name: "ReceivaSG Treasury (fees)",       short: "Treasury",       kind: "treasury" },
   sme:        { name: "Meridian Engineering Pte Ltd",    short: "Meridian (SME)", kind: "sme", uen: "201912345K" },
   buyer:      { name: "Straits Marine Holdings Ltd",     short: "Straits Marine (buyer)", kind: "buyer", uen: "198800123M" },
-  investorA:  { name: "Lion Gate Family Office",         short: "Lion Gate FO",   kind: "investor", type: "Accredited investor" },
+  investorA:  { name: "Ng & Toh Capital",                short: "Ng & Toh",       kind: "investor", type: "Accredited investor" },
   investorB:  { name: "Lim & Pang Capital",              short: "Lim & Pang",     kind: "investor", type: "Institutional investor" },
   unverified: { name: "Unverified wallet (no KYC)",      short: "Unverified",     kind: "unverified" },
   bgSme1:     { name: "Kallang Precision Pte Ltd",       short: "Kallang Precision", kind: "sme", uen: "201511223D" },

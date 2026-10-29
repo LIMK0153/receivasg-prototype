@@ -465,3 +465,31 @@ table.score { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ── DDEx venue: its own exchange look (dark terminal, teal accent), scoped to the DDEx page ── */
+.venue {
+  --surface: #131a24; --surface-2: #1a2330; --ink: #e7edf4; --ink-2: #b6c2cf; --muted: #8796a8; --line: #273447;
+  --accent: #36c2b0; --accent-ink: #052520; --accent-weak: #12383a;
+  --good: #52d49c; --good-weak: #143428; --warn: #f0b24a; --warn-weak: #3a2c13; --bad: #ff8b7c; --bad-weak: #3d1c19;
+  color-scheme: dark;
+  background: #0c121a; color: var(--ink);
+  border-radius: 10px; padding: 14px; display: grid; gap: 14px; min-width: 0;
+}
+.venue .panel { box-shadow: none; }
+.venue-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 4px 4px 2px; }
+.venue-brand { display: grid; gap: 2px; min-width: 0; }
+.venue-mark { font: 700 1.5rem/1 var(--mono); letter-spacing: 0.06em; color: var(--ink); display: inline-flex; align-items: center; gap: 8px; }
+.venue-mark::before { content: ""; width: 12px; height: 12px; background: var(--accent); transform: rotate(45deg); border-radius: 2px; }
+.venue-sub { font-size: 0.8rem; color: var(--muted); }
+.venue-stats { margin: 0; display: grid; grid-template-columns: repeat(4, auto); gap: 4px 22px; }
+.venue-stats div { display: grid; }
+.venue-stats dt { font-size: 0.72rem; color: var(--muted); }
+.venue-stats dd { margin: 0; font: 600 1rem var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.venue .grid td.r, .venue .holding dd, .venue .grid td.nw strong { font-family: var(--mono); }
+.venue .grid td { border-bottom-color: var(--line); }
+.venue .pill.accent { background: var(--accent-weak); color: var(--accent); }
+.venue .btn.primary { background: var(--accent); color: var(--accent-ink); }
+@media (max-width: 760px) {
+  .venue { padding: 10px; border-radius: 8px; }
+  .venue-stats { grid-template-columns: 1fr 1fr; }
+}

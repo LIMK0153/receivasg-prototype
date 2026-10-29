@@ -57,7 +57,7 @@ async function rpc(method, params) {
   console.log("connected:", (await page.locator(".chainchip").innerText()).replace(/\s+/g, " "));
 
   // Switching accounts happens in the wallet (as in MetaMask); the page follows.
-  const wallet = async (k) => { await page.evaluate((a) => window.__setAccount(a), deployment.actors[k]); await page.waitForFunction((n) => document.querySelector("#btn-account")?.innerText.includes(n), { sme: "Meridian", admin: "ReceivaSG", investorA: "Lion Gate", investorB: "Lim & Pang", unverified: "Unverified", buyer: "Straits" }[k]); };
+  const wallet = async (k) => { await page.evaluate((a) => window.__setAccount(a), deployment.actors[k]); await page.waitForFunction((n) => document.querySelector("#btn-account")?.innerText.includes(n), { sme: "Meridian", admin: "ReceivaSG", investorA: "Ng & Toh", investorB: "Lim & Pang", unverified: "Unverified", buyer: "Straits" }[k]); };
   const nav = (label) => page.locator(".topnav button", { hasText: label }).click();
   const toast = async (label) => {
     await page.waitForSelector(".toasts .notice", { timeout: 30000 });

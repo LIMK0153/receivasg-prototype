@@ -104,7 +104,7 @@ export default function ResultsView({ snap, ledger, client }) {
           </li>
           {trades.length ? (
             <li>
-              <strong>Paid to whoever held the tokens on the due date.</strong> Lion Gate sold on DDEx, so its share went to Lim & Pang. No one had to update a register by hand.
+              <strong>Paid to whoever held the tokens on the due date.</strong> Ng & Toh sold on DDEx, so its share went to Lim & Pang. No one had to update a register by hand.
             </li>
           ) : null}
           <li>
